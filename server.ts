@@ -58,7 +58,7 @@ Use lowercase, alphanumeric-only champion names as keys in the powerCurves map (
 Data: ${JSON.stringify(matchData)}`;
         
         const response = await ai.models.generateContent({
-          model: "gemini-1.5-flash",
+          model: "gemini-3.1-flash-lite",
           contents: prompt,
           config: {
             responseMimeType: "application/json",
