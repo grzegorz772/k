@@ -228,20 +228,20 @@ MECZ DATA:
               onClick={() => setActiveTab("history")}
               className={`text-[10px] px-3 py-1 rounded border transition-colors font-bold ${activeTab === "history" ? "bg-[#66fcf1] text-[#0b0c10] border-[#66fcf1]" : "text-[#45a29e] border-[#1f2833] hover:border-[#45a29e]"}`}
             >
-              HISTORY AI
+              START
             </button>
             <button 
               onClick={() => setActiveTab("live")}
               className={`text-[10px] px-3 py-1 rounded border transition-colors font-bold ${activeTab === "live" ? "bg-[#66fcf1] text-[#0b0c10] border-[#66fcf1]" : "text-[#45a29e] border-[#1f2833] hover:border-[#45a29e]"}`}
             >
-              LIVE GAME
+              LIVE GAME START
             </button>
             <button 
               onClick={() => setActiveTab("replay")}
               disabled={!rawMatchDetails}
               className={`text-[10px] px-3 py-1 rounded border transition-colors font-bold ${activeTab === "replay" ? "bg-[#66fcf1] text-[#0b0c10] border-[#66fcf1]" : "text-[#45a29e] border-[#1f2833] hover:border-[#45a29e] disabled:opacity-30 disabled:cursor-not-allowed"}`}
             >
-              MAP REPLAY
+              ANALYZE MATCH
             </button>
         </div>
       </header>
@@ -362,7 +362,7 @@ MECZ DATA:
             </div>
           ) : activeTab === "replay" && rawMatchDetails && rawMatchTimeline ? (
             <div className="flex-1 bg-[#0b0c10] border border-[#1f2833] rounded-lg overflow-hidden relative">
-              <ReplayViewer matchDetails={rawMatchDetails} matchTimeline={rawMatchTimeline} dDragon={rawDDragon} />
+              <ReplayViewer matchDetails={rawMatchDetails} matchTimeline={rawMatchTimeline} dDragon={rawDDragon} playerPuuid={currentAccount?.puuid} />
             </div>
           ) : (
             <div className="flex-1 bg-[#0b0c10] border border-[#1f2833] rounded-lg flex flex-col overflow-hidden relative">

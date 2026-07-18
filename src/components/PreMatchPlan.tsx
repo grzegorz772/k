@@ -411,10 +411,10 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
       return "#00ff66"; // Bright Neon Green
     }
     if (p.team === "Blue") {
-      const blueShades = ["#3b82f6", "#06b6d4", "#2563eb", "#60a5fa", "#0ea5e9"];
+      const blueShades = ["#1e3a8a", "#1e40af", "#2563eb", "#3b82f6", "#60a5fa"];
       return blueShades[blueIndex % blueShades.length];
     } else {
-      const redShades = ["#ef4444", "#f97316", "#dc2626", "#f87171", "#ec4899"];
+      const redShades = ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444"];
       return redShades[redIndex % redShades.length];
     }
   };

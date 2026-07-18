@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import fs from 'fs';
+
+const newCode = `import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Play, Pause, GripHorizontal, Settings, Skull, Sparkles, Brain, Loader2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
@@ -130,8 +132,8 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
               redG += pf.totalGold;
               redDmg += pf.damageStats?.totalDamageDoneToChampions || 0;
             }
-            champGold[`champ_${pf.participantId}`] = pf.totalGold / 1000;
-            champDmg[`champ_dmg_${pf.participantId}`] = (pf.damageStats?.totalDamageDoneToChampions || 0) / 1000;
+            champGold[\`champ_\${pf.participantId}\`] = pf.totalGold / 1000;
+            champDmg[\`champ_dmg_\${pf.participantId}\`] = (pf.damageStats?.totalDamageDoneToChampions || 0) / 1000;
         });
         
         return { 
@@ -262,12 +264,12 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
     const MAX_COORD = 14820;
     let x = (p.x / MAX_COORD) * 100;
     let y = (p.y / MAX_COORD) * 100;
-    return { left: `${x}%`, bottom: `${y}%` };
+    return { left: \`\${x}%\`, bottom: \`\${y}%\` };
   };
 
   const currentMinutes = Math.floor(gameTimeMs / 60000);
   const currentSeconds = Math.floor((gameTimeMs % 60000) / 1000);
-  const timeStr = `${currentMinutes.toString().padStart(2, '0')}:${currentSeconds.toString().padStart(2, '0')}`;
+  const timeStr = \`\${currentMinutes.toString().padStart(2, '0')}:\${currentSeconds.toString().padStart(2, '0')}\`;
   
   const renderDragonIcon = (subType: string) => {
       let color = "bg-gray-500";
@@ -277,7 +279,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
       if (subType === "AIR_DRAGON") color = "bg-blue-200";
       if (subType === "HEXTECH_DRAGON") color = "bg-blue-600";
       if (subType === "CHEMTECH_DRAGON") color = "bg-green-600";
-      return <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full ${color} shadow-sm border border-[#0b0c10]`} />
+      return <div className={\`w-2 h-2 md:w-3 md:h-3 rounded-full \${color} shadow-sm border border-[#0b0c10]\`} />
   }
 
   const getChampColor = (team: number, idx: number, isPlayer: boolean) => {
@@ -311,18 +313,18 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Analyze these major events from a League of Legends match and provide a step-by-step critical breakdown of the mistakes made, especially focusing on deaths, lost objectives, and gold deficits. Focus purely on key turning points.
+          prompt: \`Analyze these major events from a League of Legends match and provide a step-by-step critical breakdown of the mistakes made, especially focusing on deaths, lost objectives, and gold deficits. Focus purely on key turning points.
           
           Events:
-          ${JSON.stringify(allEvents.filter(e => e.type === 'CHAMPION_KILL' || e.type === 'ELITE_MONSTER_KILL').map(e => {
+          \${JSON.stringify(allEvents.filter(e => e.type === 'CHAMPION_KILL' || e.type === 'ELITE_MONSTER_KILL').map(e => {
             const timeMins = Math.floor(e.timestamp / 60000);
             if (e.type === 'CHAMPION_KILL') {
-              return `${timeMins} min: Kill by ${participantsInfo[e.killerId]?.championName} on ${participantsInfo[e.victimId]?.championName}`;
+              return \`\${timeMins} min: Kill by \${participantsInfo[e.killerId]?.championName} on \${participantsInfo[e.victimId]?.championName}\`;
             } else {
-              return `${timeMins} min: ${e.monsterType} secured by Team ${e.killerTeamId === 100 ? 'Blue' : 'Red'}`;
+              return \`\${timeMins} min: \${e.monsterType} secured by Team \${e.killerTeamId === 100 ? 'Blue' : 'Red'}\`;
             }
           }))}
-          `
+          \`
         })
       });
 
@@ -350,7 +352,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                 <button 
                   key={s} 
                   onClick={() => setSpeed(s)}
-                  className={`text-[10px] md:text-sm px-2 py-1 rounded transition-colors ${speed === s ? 'bg-[#66fcf1] text-[#0b0c10] font-bold' : 'text-gray-400 hover:text-white'}`}
+                  className={\`text-[10px] md:text-sm px-2 py-1 rounded transition-colors \${speed === s ? 'bg-[#66fcf1] text-[#0b0c10] font-bold' : 'text-gray-400 hover:text-white'}\`}
                 >
                   {s}x
                 </button>
@@ -370,15 +372,15 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
       <div className="flex-1 flex flex-col xl:flex-row gap-4 min-h-[500px]">
         
         <div className="relative flex-1 bg-[#111] border border-[#1f2833] rounded-xl overflow-hidden flex items-center justify-center p-4">
-            <div ref={mapRef} className="aspect-square w-full max-h-[60vh] max-w-[500px] bg-[#1f2833] border border-[#2f3843] rounded-xl relative overflow-hidden shadow-2xl mx-auto">
-                <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/map/map11.png`} className="absolute inset-0 w-full h-full opacity-60 flex-shrink-0 pointer-events-none object-cover mix-blend-screen" />
+            <div ref={mapRef} className="aspect-square w-full max-h-[80vh] max-w-[800px] bg-[#1f2833] border border-[#2f3843] rounded-xl relative overflow-hidden shadow-2xl mx-auto">
+                <img src={\`https://ddragon.leagueoflegends.com/cdn/\${dDragon.latest}/img/map/map11.png\`} className="absolute inset-0 w-full h-full opacity-60 flex-shrink-0 pointer-events-none object-cover mix-blend-screen" />
                 
                 {recentPopups.map((popup, idx) => {
                     if (popup.popupType === 'KILL' && popup.position) {
                         const pos = getMapPosition(popup.position);
                         return (
                             <motion.div 
-                                key={`map-kill-${popup.timestamp}-${popup.victimId}`}
+                                key={\`map-kill-\${popup.timestamp}-\${popup.victimId}\`}
                                 initial={{ opacity: 1, scale: 0 }}
                                 animate={{ opacity: 0, scale: 3 }}
                                 transition={{ duration: 1.5, ease: "easeOut" }}
@@ -401,21 +403,21 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                                 if (!killer || !victim) return null;
                                 return (
                                     <motion.div 
-                                      key={`kill-${popup.timestamp}-${idx}`}
+                                      key={\`kill-\${popup.timestamp}-\${idx}\`}
                                       initial={{ y: -20, opacity: 0, scale: 0.8 }}
                                       animate={{ y: 0, opacity: 1, scale: 1 }}
                                       exit={{ y: -10, opacity: 0, scale: 0.9 }}
                                       className="bg-black/80 backdrop-blur-sm border border-red-900/50 rounded-full px-4 py-1.5 flex items-center gap-3 shadow-2xl"
                                     >
-                                        <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/champion/${killer.championInternal || killer.championName}.png`} className="w-6 h-6 rounded-full border border-gray-600" />
+                                        <img src={\`https://ddragon.leagueoflegends.com/cdn/\${dDragon.latest}/img/champion/\${killer.championInternal || killer.championName}.png\`} className="w-6 h-6 rounded-full border border-gray-600" />
                                         <Skull className="w-4 h-4 text-red-500" />
-                                        <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/champion/${victim.championInternal || victim.championName}.png`} className="w-6 h-6 rounded-full border border-gray-600 opacity-75 grayscale" />
+                                        <img src={\`https://ddragon.leagueoflegends.com/cdn/\${dDragon.latest}/img/champion/\${victim.championInternal || victim.championName}.png\`} className="w-6 h-6 rounded-full border border-gray-600 opacity-75 grayscale" />
                                     </motion.div>
                                 );
                             } else {
                                 return (
                                     <motion.div 
-                                      key={`obj-${popup.timestamp}-${idx}`}
+                                      key={\`obj-\${popup.timestamp}-\${idx}\`}
                                       initial={{ y: -20, opacity: 0, scale: 0.8 }}
                                       animate={{ y: 0, opacity: 1, scale: 1 }}
                                       exit={{ y: -10, opacity: 0, scale: 0.9 }}
@@ -433,21 +435,21 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                 {activeTowers.map(t => (
                     <div 
                        key={t.id} 
-                       className={`absolute w-[3.5%] h-[3.5%] rounded-full -translate-x-1/2 translate-y-1/2 flex items-center justify-center
-                                 ${t.team === 100 ? 'bg-blue-600' : 'bg-red-600'} transition-opacity duration-300
-                                 ${t.isDead ? 'opacity-10 scale-75' : 'opacity-80 shadow-[0_0_8px_rgba(0,0,0,0.8)] border border-white/50'}`}
+                       className={\`absolute w-[3.5%] h-[3.5%] rounded-full -translate-x-1/2 translate-y-1/2 flex items-center justify-center
+                                 \${t.team === 100 ? 'bg-blue-600' : 'bg-red-600'} transition-opacity duration-300
+                                 \${t.isDead ? 'opacity-10 scale-75' : 'opacity-80 shadow-[0_0_8px_rgba(0,0,0,0.8)] border border-white/50'}\`}
                        style={getMapPosition({x: t.x, y: t.y})} 
                     />
                 ))}
 
                 <div className="absolute w-[6%] h-[6%] -translate-x-1/2 translate-y-1/2 flex flex-col items-center justify-center font-bold text-[8px] z-10" style={getMapPosition({x: 9800, y: 4400})}>
-                    <div className={`w-full h-full rounded-full border border-white flex items-center justify-center shadow-lg transition-colors ${objectiveStates.dragonAlive ? 'bg-orange-500 text-white' : 'bg-black/80 text-gray-400 scale-75'}`}>
+                    <div className={\`w-full h-full rounded-full border border-white flex items-center justify-center shadow-lg transition-colors \${objectiveStates.dragonAlive ? 'bg-orange-500 text-white' : 'bg-black/80 text-gray-400 scale-75'}\`}>
                        {objectiveStates.dragonAlive ? 'D' : '-'}
                     </div>
                 </div>
                 
                 <div className="absolute w-[6%] h-[6%] -translate-x-1/2 translate-y-1/2 flex flex-col items-center justify-center font-bold text-[8px] z-10" style={getMapPosition({x: 5000, y: 10400})}>
-                    <div className={`w-full h-full rounded-full border border-white flex items-center justify-center shadow-lg transition-colors ${objectiveStates.baronAlive ? 'bg-purple-600 text-white' : 'bg-black/80 text-gray-400 scale-75'}`}>
+                    <div className={\`w-full h-full rounded-full border border-white flex items-center justify-center shadow-lg transition-colors \${objectiveStates.baronAlive ? 'bg-purple-600 text-white' : 'bg-black/80 text-gray-400 scale-75'}\`}>
                        {objectiveStates.baronAlive ? 'B' : '-'}
                     </div>
                 </div>
@@ -475,7 +477,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                     const hpPct = maxHp > 0 ? Math.max(0, Math.min(100, (currHp / maxHp) * 100)) : 100;
                     
                     return (
-                        <div key={p.participantId} className={`absolute w-[10%] h-[10%] -translate-x-1/2 translate-y-1/2 flex flex-col items-center justify-center z-20 transition-all ${smoothMovement ? 'duration-0' : 'duration-[400ms]'}`} style={{ left: pos.left, bottom: pos.bottom }}>
+                        <div key={p.participantId} className={\`absolute w-[8%] h-[8%] -translate-x-1/2 translate-y-1/2 flex flex-col items-center justify-center z-20 transition-all \${smoothMovement ? 'duration-0' : 'duration-[400ms]'}\`} style={{ left: pos.left, bottom: pos.bottom }}>
                             
                             {headStat !== 'none' && stats && (
                                 <div className="absolute -top-4 w-auto whitespace-nowrap bg-black/80 text-[8px] px-1.5 py-0.5 rounded border border-gray-700/50 shadow-md">
@@ -486,11 +488,11 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                                 </div>
                             )}
 
-                            <div className="w-[150%] h-1.5 md:h-2 bg-[#0b0c10] border border-black mb-[2px] relative rounded-[2px] overflow-hidden shadow-sm">
-                                <div className={`h-full transition-all duration-300 ${p.teamId === 100 ? 'bg-[#3b82f6]' : 'bg-[#ef4444]'}`} style={{ width: `${hpPct}%` }} />
+                            <div className="w-[124%] h-1 md:h-1.5 bg-[#0b0c10] border border-black mb-[2px] relative rounded-[2px] overflow-hidden shadow-sm">
+                                <div className={\`h-full transition-all duration-300 \${p.teamId === 100 ? 'bg-[#3b82f6]' : 'bg-[#ef4444]'}\`} style={{ width: \`\${hpPct}%\` }} />
                             </div>
                             
-                            <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/champion/${p.championInternal || p.championName}.png`} className={`w-full h-full rounded-full border-[2px] shadow-lg ${p.teamId === 100 ? 'border-[#3b82f6]' : 'border-[#ef4444]'}`} />
+                            <img src={\`https://ddragon.leagueoflegends.com/cdn/\${dDragon.latest}/img/champion/\${p.championInternal || p.championName}.png\`} className={\`w-full h-full rounded-full border-[2px] shadow-lg \${p.teamId === 100 ? 'border-[#3b82f6]' : 'border-[#ef4444]'}\`} />
                         </div>
                     );
                 })}
@@ -507,7 +509,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                         <div key={p.name} className="flex items-center justify-between text-[9px] md:text-[11px] text-blue-100 font-medium whitespace-nowrap gap-2">
                             <div className="flex items-center flex-1 gap-1.5">
                                 <div className="relative shrink-0">
-                                   <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/champion/${p.champion}.png`} className="w-5 h-5 rounded-[4px] border border-blue-500/50"/>
+                                   <img src={\`https://ddragon.leagueoflegends.com/cdn/\${dDragon.latest}/img/champion/\${p.champion}.png\`} className="w-5 h-5 rounded-[4px] border border-blue-500/50"/>
                                    <div className="absolute -bottom-1.5 -right-1.5 bg-black text-white text-[7px] w-[14px] h-[14px] flex items-center justify-center rounded-full border border-gray-700">{p.level}</div>
                                 </div>
                                 <span className="font-mono ml-1 text-yellow-500/90 w-7">{(p.gold/1000).toFixed(1)}k</span>
@@ -530,7 +532,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                         <div key={p.name} className="flex items-center justify-between text-[9px] md:text-[11px] text-red-100 font-medium whitespace-nowrap gap-2 flex-row-reverse">
                             <div className="flex items-center flex-1 gap-1.5 flex-row-reverse">
                                 <div className="relative shrink-0">
-                                   <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/champion/${p.champion}.png`} className="w-5 h-5 rounded-[4px] border border-red-500/50"/>
+                                   <img src={\`https://ddragon.leagueoflegends.com/cdn/\${dDragon.latest}/img/champion/\${p.champion}.png\`} className="w-5 h-5 rounded-[4px] border border-red-500/50"/>
                                    <div className="absolute -bottom-1.5 -left-1.5 bg-black text-white text-[7px] w-[14px] h-[14px] flex items-center justify-center rounded-full border border-gray-700">{p.level}</div>
                                 </div>
                                 <span className="font-mono mr-1 text-yellow-500/90 w-7 text-right">{(p.gold/1000).toFixed(1)}k</span>
@@ -579,10 +581,10 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                                 {participantStats.map((p) => {
                                     const isPlayer = playerPuuid ? participantsInfo[p.id]?.puuid === playerPuuid : false;
                                     return (
-                                        <label key={`gold-${p.id}`} className="flex items-center gap-2 cursor-pointer hover:text-white overflow-hidden">
+                                        <label key={\`gold-\${p.id}\`} className="flex items-center gap-2 cursor-pointer hover:text-white overflow-hidden">
                                             <input type="checkbox" checked={chartConfig.champs[p.id] || false} onChange={e => setChartConfig({...chartConfig, champs: {...chartConfig.champs, [p.id]: e.target.checked}})} className="accent-yellow-500" />
                                             <div className="relative">
-                                            <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/champion/${p.champion}.png`} className={`w-4 h-4 rounded ${isPlayer ? 'border-2 border-emerald-500' : 'border border-gray-700'}`} />
+                                            <img src={\`https://ddragon.leagueoflegends.com/cdn/\${dDragon.latest}/img/champion/\${p.champion}.png\`} className={\`w-4 h-4 rounded \${isPlayer ? 'border-2 border-emerald-500' : 'border border-gray-700'}\`} />
                                             </div>
                                             <span className="truncate text-[10px]">{p.champion}</span>
                                         </label>
@@ -596,10 +598,10 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                                 {participantStats.map((p) => {
                                     const isPlayer = playerPuuid ? participantsInfo[p.id]?.puuid === playerPuuid : false;
                                     return (
-                                        <label key={`dmg-${p.id}`} className="flex items-center gap-2 cursor-pointer hover:text-white overflow-hidden">
+                                        <label key={\`dmg-\${p.id}\`} className="flex items-center gap-2 cursor-pointer hover:text-white overflow-hidden">
                                             <input type="checkbox" checked={chartConfig.champsDmg[p.id] || false} onChange={e => setChartConfig({...chartConfig, champsDmg: {...chartConfig.champsDmg, [p.id]: e.target.checked}})} className="accent-orange-500" />
                                             <div className="relative">
-                                            <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/champion/${p.champion}.png`} className={`w-4 h-4 rounded ${isPlayer ? 'border-2 border-emerald-500' : 'border border-gray-700'}`} />
+                                            <img src={\`https://ddragon.leagueoflegends.com/cdn/\${dDragon.latest}/img/champion/\${p.champion}.png\`} className={\`w-4 h-4 rounded \${isPlayer ? 'border-2 border-emerald-500' : 'border border-gray-700'}\`} />
                                             </div>
                                             <span className="truncate text-[10px]">{p.champion}</span>
                                         </label>
@@ -634,11 +636,11 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                             const elements = [];
                             if (chartConfig.champs[p.participantId]) {
                                 const color = getChampColor(p.teamId, idx, isPlayer);
-                                elements.push(<Line key={`g-${p.participantId}`} type="monotone" dataKey={`champ_${p.participantId}`} name={`${p.championInternal || p.championName} Gold (k)`} stroke={color} dot={false} strokeWidth={2} isAnimationActive={false} />);
+                                elements.push(<Line key={\`g-\${p.participantId}\`} type="monotone" dataKey={\`champ_\${p.participantId}\`} name={\`\${p.championInternal || p.championName} Gold (k)\`} stroke={color} dot={false} strokeWidth={2} isAnimationActive={false} />);
                             }
                             if (chartConfig.champsDmg[p.participantId]) {
                                 const colorDmg = getChampColorDmg(p.teamId, idx, isPlayer);
-                                elements.push(<Line key={`d-${p.participantId}`} type="monotone" dataKey={`champ_dmg_${p.participantId}`} name={`${p.championInternal || p.championName} Dmg (k)`} stroke={colorDmg} strokeDasharray="2 2" dot={false} strokeWidth={2} isAnimationActive={false} />);
+                                elements.push(<Line key={\`d-\${p.participantId}\`} type="monotone" dataKey={\`champ_dmg_\${p.participantId}\`} name={\`\${p.championInternal || p.championName} Dmg (k)\`} stroke={colorDmg} strokeDasharray="2 2" dot={false} strokeWidth={2} isAnimationActive={false} />);
                             }
                             return elements;
                         })}
@@ -688,3 +690,6 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
     </div>
   );
 }
+`
+fs.writeFileSync('src/components/ReplayViewer.tsx', newCode);
+console.log("Updated update_replay3");
