@@ -37,24 +37,34 @@ async function startServer() {
             }
         });
         
-        const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100.
-Also provide a concise, high-level tactical summary in ${language === 'PL' ? 'Polish' : 'English'} of the player's champion role, what they should do early, mid, and late game, and overall team composition strengths.
+        const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100. Also estimate the exact or approximate base cooldown of their Ultimate (R) ability in seconds at ranks 1, 2, 3 (levels 6, 11, 16) as a string formatted like "120/100/80".
+
+Provide a comprehensive tactical analysis strictly in ${language === 'PL' ? 'Polish (Polski)' : 'English'}.
+Your analysis must detail:
+1. EARLY GAME: Lane strategy with Cho'Gath (or player's champion if not Cho'Gath) and overall early macro.
+2. MID GAME: Mid-game transition, objective focus, and side-lane / macro control with Cho'Gath.
+3. LATE GAME: Late-game scaling, teamfighting, or split-pushing with Cho'Gath.
+4. TEAM COMPOSITION & TEAMFIGHTS: Deep dive into the allied and enemy team compositions, explaining why they are structured this way, what their win/loss dynamics are, and how they interact in teamfights.
+5. OPTIMAL WINNING PLAN: The absolute best, most optimal step-by-step strategy/plan to secure a win.
 
 Return your response strictly in the following JSON structure:
 {
-  "summary": "Your detailed tactical summary in Polish or English depending on language...",
+  "earlyGame": "Detailed tactical advice for early game in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "midGame": "Detailed tactical advice for mid game in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "lateGame": "Detailed tactical advice for late game in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "teamComp": "Deep analysis of the team compositions in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "optimalPlan": "Step-by-step optimal winning plan in ${language === 'PL' ? 'Polish' : 'English'}...",
   "powerCurves": {
     "championname": {
       "early": <number 0-100>,
       "mid": <number 0-100>,
       "late": <number 0-100>,
-      "archetype": "Brief archetype description (e.g. Scaling Hypercarry, Early Bully) in ${language === 'PL' ? 'Polish' : 'English'}",
-      "tips": "Brief tactical tips for this champion in ${language === 'PL' ? 'Polish' : 'English'}"
+      "rCooldown": "cooldown in seconds at level 6/11/16, e.g. '120/100/80'"
     }
   }
 }
 
-Use lowercase, alphanumeric-only champion names as keys in the powerCurves map (e.g. "garen", "leesin", "missfortune", "jarvaniv"). Evaluate all 10 participants.
+Use lowercase, alphanumeric-only champion names as keys in the powerCurves map (e.g. "garen", "leesin", "missfortune", "jarvaniv"). Evaluate all 10 participants in the game.
 Data: ${JSON.stringify(matchData)}`;
         
         const response = await ai.models.generateContent({

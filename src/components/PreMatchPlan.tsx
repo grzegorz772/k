@@ -120,8 +120,186 @@ export function getChampionPowerCurve(champName: string): ChampionPowerCurve {
   }
 }
 
+const DEFAULT_R_COOLDOWNS: Record<string, string> = {
+  garen: "120/100/80",
+  darius: "120/100/80",
+  kayle: "160/120/80",
+  kassadin: "6/4/2",
+  vayne: "100/85/70",
+  jinx: "75/65/55",
+  leesin: "110/85/60",
+  elise: "4/4/4",
+  pantheon: "180/150/120",
+  lucian: "110/100/90",
+  draven: "120/100/80",
+  yasuo: "80/55/30",
+  yone: "120/100/80",
+  ahri: "130/115/100",
+  zed: "120/100/80",
+  syndra: "120/100/80",
+  veigar: "120/100/80",
+  nasus: "120/120/120",
+  jax: "80/80/80",
+  fiora: "110/90/70",
+  vladimir: "120/110/100",
+  smolder: "140/130/120",
+  malphite: "130/115/100",
+  ornn: "140/120/100",
+  thresh: "140/120/100",
+  blitzcrank: "60/40/20",
+  lulu: "120/100/80",
+  janna: "150/135/120",
+  ashe: "100/80/60",
+  caitlyn: "90/90/90",
+  ezreal: "120/105/90",
+  zeri: "100/85/70",
+  kaisa: "130/100/70",
+  hwei: "140/115/90",
+  lux: "40/30/20",
+  chogath: "80/70/60",
+  aatrox: "120/100/80",
+  akali: "100/80/60",
+  alistar: "120/100/80",
+  amumu: "150/125/100",
+  anivia: "4/3/2",
+  annie: "120/100/80",
+  aphelios: "120/110/100",
+  aurelionsol: "120/110/100",
+  azir: "120/105/90",
+  bard: "110/95/80",
+  belveth: "20/15/10",
+  braum: "140/120/100",
+  briar: "120/100/80",
+  camille: "150/115/80",
+  cassiopeia: "120/100/80",
+ Corki: "12/12/12",
+  drmundo: "120/110/100",
+  ekko: "110/80/50",
+  evelynn: "120/100/80",
+  fiddlesticks: "140/110/80",
+  fizz: "100/85/70",
+  galio: "200/180/160",
+  gangplank: "180/160/140",
+  gnar: "120/100/80",
+  gragas: "120/100/80",
+  graves: "120/90/60",
+  gwen: "120/100/80",
+  hecarim: "140/120/100",
+  heimerdinger: "100/85/70",
+  illaoi: "120/105/90",
+  irelia: "140/125/110",
+  ivern: "120/110/100",
+  jantar: "120/100/80",
+  jarvaniv: "120/105/90",
+  jayce: "6/6/6",
+  jhin: "120/105/90",
+  karthus: "200/180/160",
+  katarina: "90/60/45",
+  kayn: "120/100/80",
+  kennen: "120/110/100",
+  khazix: "100/85/70",
+  kindred: "180/160/140",
+  kled: "140/125/110",
+  kogmaw: "2/1.5/1",
+  leblanc: "60/45/30",
+  leona: "90/75/60",
+  lillia: "130/110/90",
+  lissandra: "120/100/80",
+  lucian_adc: "110/100/90",
+  maokai: "140/120/100",
+  masteryi: "85/85/85",
+  milio: "120/100/80",
+  missfortune: "120/110/100",
+  mordekaiser: "140/120/100",
+  morgana: "120/110/100",
+  naafiri: "120/110/100",
+  nami: "120/110/100",
+  nautilus: "120/100/80",
+  neeko: "120/105/90",
+  nidalee: "3/3/3",
+  nilah: "110/95/80",
+  nocturne: "140/115/90",
+  nunu: "110/100/90",
+  olaf: "100/90/80",
+  orianna: "110/95/80",
+  orlan: "120/100/80",
+  pantheon_top: "180/150/120",
+  poppy: "140/120/100",
+  pyke: "120/100/80",
+  qiyana: "120/100/80",
+  quinn: "3/3/3",
+  rakan: "120/100/80",
+  rammus: "110/95/80",
+  reksai: "100/80/60",
+  rell: "120/100/80",
+  renata: "150/130/110",
+  renekton: "120/120/120",
+  rengar: "110/90/70",
+  riven: "120/95/70",
+  rumble: "130/110/90",
+  ryze: "120/110/100",
+  samira: "8/5/3",
+  sejuani: "120/100/80",
+  senna: "160/140/120",
+  seraphine: "160/140/120",
+  sett: "120/100/80",
+  shaco: "100/90/80",
+  shen: "200/180/160",
+  shyvana: "100/100/100",
+  singed: "120/120/120",
+  sion: "140/115/90",
+  sivir: "100/85/70",
+  skarner: "120/100/80",
+  sona: "140/120/100",
+  soraka: "160/145/130",
+  swain: "120/100/80",
+  sylas: "100/70/40",
+  tahmkench: "120/100/80",
+  taliyah: "180/150/120",
+  talon: "100/85/70",
+  taric: "180/160/140",
+  teemo: "30/25/20",
+  tristana: "120/110/100",
+  trundle: "120/100/80",
+  tryndamere: "130/110/90",
+  twistedfate: "180/150/120",
+  twitch: "90/90/90",
+  udyr: "6/6/6",
+  urgot: "120/100/80",
+  varus: "120/105/90",
+  vayne_bot: "100/85/70",
+  veigar_mid: "120/100/80",
+  velkoz: "120/100/80",
+  vex: "140/120/100",
+  vi: "120/100/80",
+  viego: "120/100/80",
+  viktor: "120/105/90",
+  volibear: "160/140/120",
+  warwick: "110/90/70",
+  wukong: "120/105/90",
+  xayah: "140/120/100",
+  xerath: "130/115/100",
+  xinzhao: "120/110/100",
+  yasuo_mid: "80/55/30",
+  yorick: "160/130/100",
+  yuumi: "110/100/90",
+  zac: "130/115/100",
+  zeri_adc: "100/85/70",
+  ziggs: "120/105/90",
+  zilean: "120/90/60",
+  zoe: "8/6/4",
+  zyra: "110/100/90"
+};
+
+export function getChampionRCooldown(champName: string, curveRCooldown?: string): string {
+  if (curveRCooldown && curveRCooldown.trim() !== "") {
+    return curveRCooldown;
+  }
+  const key = champName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return DEFAULT_R_COOLDOWNS[key] || "120/100/80";
+}
+
 export default function PreMatchPlan({ participants, ourChampion, latestVersion = "14.22.1", isLive = false }: PreMatchPlanProps) {
-  const [expandedChamp, setExpandedChamp] = useState<string | null>(null);
   const [language, setLanguage] = useState<"PL" | "EN">("PL");
   const [powerCurves, setPowerCurves] = useState<any>(null);
   const [customApiKey, setCustomApiKey] = useState<string>("");
@@ -350,7 +528,6 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
           <div className="flex flex-col gap-2">
             {cleanBlueTeam.map((p) => {
               const curve = getCurve(p.champion);
-              const isExpanded = expandedChamp === `blue-${p.champion}`;
               
               return (
                 <div 
@@ -411,27 +588,12 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
                       )}
                     </div>
 
-                    {/* Expand Tip Button */}
-                    <button 
-                      onClick={() => setExpandedChamp(isExpanded ? null : `blue-${p.champion}`)}
-                      className="p-1 text-gray-500 hover:text-[#66fcf1] self-end sm:self-center transition-colors"
-                    >
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {/* Expandable Strategic Tips */}
-                  {isExpanded && curve && (
-                    <div className="mt-2.5 pt-2 border-t border-[#1f2833]/60 text-[10px] text-gray-400 flex gap-2 animate-fadeIn bg-[#111]/30 p-2 rounded">
-                      <Info className="w-3.5 h-3.5 text-[#66fcf1] shrink-0 mt-0.5" />
-                      <div>
-                        <div className="flex gap-1.5 items-center mb-1">
-                          <span className="font-bold text-[#66fcf1] uppercase text-[9px]">{curve.archetype}</span>
-                        </div>
-                        <p className="text-gray-300 font-normal leading-relaxed">{curve.tips}</p>
-                      </div>
+                    {/* R Cooldown Badge */}
+                    <div className="flex flex-col items-center justify-center shrink-0 min-w-[75px] select-none bg-[#111]/80 border border-gray-800/80 px-2.5 py-1.5 rounded text-center self-end sm:self-center">
+                      <span className="text-[7px] text-[#45a29e] font-black uppercase tracking-wider mb-0.5">Cooldown R</span>
+                      <span className="text-[10.5px] font-mono font-bold text-[#66fcf1]">{getChampionRCooldown(p.champion, curve?.rCooldown)}s</span>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -460,8 +622,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
           <div className="flex flex-col gap-2">
             {cleanRedTeam.map((p) => {
               const curve = getCurve(p.champion);
-              const isExpanded = expandedChamp === `red-${p.champion}`;
-
+              
               return (
                 <div 
                   key={`red-${p.champion}-${p.name}`}
@@ -521,27 +682,12 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
                       )}
                     </div>
 
-                    {/* Expand Tip Button */}
-                    <button 
-                      onClick={() => setExpandedChamp(isExpanded ? null : `red-${p.champion}`)}
-                      className="p-1 text-gray-500 hover:text-[#66fcf1] self-end sm:self-center transition-colors"
-                    >
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {/* Expandable Strategic Tips */}
-                  {isExpanded && curve && (
-                    <div className="mt-2.5 pt-2 border-t border-[#1f2833]/60 text-[10px] text-gray-400 flex gap-2 animate-fadeIn bg-[#111]/30 p-2 rounded">
-                      <Info className="w-3.5 h-3.5 text-[#66fcf1] shrink-0 mt-0.5" />
-                      <div>
-                        <div className="flex gap-1.5 items-center mb-1">
-                          <span className="font-bold text-[#66fcf1] uppercase text-[9px]">{curve.archetype}</span>
-                        </div>
-                        <p className="text-gray-300 font-normal leading-relaxed">{curve.tips}</p>
-                      </div>
+                    {/* R Cooldown Badge */}
+                    <div className="flex flex-col items-center justify-center shrink-0 min-w-[75px] select-none bg-[#111]/80 border border-gray-800/80 px-2.5 py-1.5 rounded text-center self-end sm:self-center">
+                      <span className="text-[7px] text-[#45a29e] font-black uppercase tracking-wider mb-0.5">Cooldown R</span>
+                      <span className="text-[10.5px] font-mono font-bold text-[#66fcf1]">{getChampionRCooldown(p.champion, curve?.rCooldown)}s</span>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -564,24 +710,34 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
 }
 
 async function generateSummaryDirect(matchData: any, language: "PL" | "EN", apiKey: string) {
-  const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100.
-Also provide a concise, high-level tactical summary in ${language === 'PL' ? 'Polish' : 'English'} of the player's champion role, what they should do early, mid, and late game, and overall team composition strengths.
+  const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100. Also estimate the exact or approximate base cooldown of their Ultimate (R) ability in seconds at ranks 1, 2, 3 (levels 6, 11, 16) as a string formatted like "120/100/80".
+
+Provide a comprehensive tactical analysis strictly in ${language === 'PL' ? 'Polish (Polski)' : 'English'}.
+Your analysis must detail:
+1. EARLY GAME: Lane strategy with Cho'Gath (or player's champion if not Cho'Gath) and overall early macro.
+2. MID GAME: Mid-game transition, objective focus, and side-lane / macro control with Cho'Gath.
+3. LATE GAME: Late-game scaling, teamfighting, or split-pushing with Cho'Gath.
+4. TEAM COMPOSITION & TEAMFIGHTS: Deep dive into the allied and enemy team compositions, explaining why they are structured this way, what their win/loss dynamics are, and how they interact in teamfights.
+5. OPTIMAL WINNING PLAN: The absolute best, most optimal step-by-step strategy/plan to secure a win.
 
 Return your response strictly in the following JSON structure:
 {
-  "summary": "Your detailed tactical summary in Polish or English depending on language...",
+  "earlyGame": "Detailed tactical advice for early game in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "midGame": "Detailed tactical advice for mid game in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "lateGame": "Detailed tactical advice for late game in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "teamComp": "Deep analysis of the team compositions in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "optimalPlan": "Step-by-step optimal winning plan in ${language === 'PL' ? 'Polish' : 'English'}...",
   "powerCurves": {
     "championname": {
       "early": <number 0-100>,
       "mid": <number 0-100>,
       "late": <number 0-100>,
-      "archetype": "Brief archetype description (e.g. Scaling Hypercarry, Early Bully) in ${language === 'PL' ? 'Polish' : 'English'}",
-      "tips": "Brief tactical tips for this champion in ${language === 'PL' ? 'Polish' : 'English'}"
+      "rCooldown": "cooldown in seconds at level 6/11/16, e.g. '120/100/80'"
     }
   }
 }
 
-Use lowercase, alphanumeric-only champion names as keys in the powerCurves map (e.g. "garen", "leesin", "missfortune", "jarvaniv"). Evaluate all 10 participants.
+Use lowercase, alphanumeric-only champion names as keys in the powerCurves map (e.g. "garen", "leesin", "missfortune", "jarvaniv"). Evaluate all 10 participants in the game.
 Data: ${JSON.stringify(matchData)}`;
 
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
@@ -626,8 +782,18 @@ Data: ${JSON.stringify(matchData)}`;
   return JSON.parse(text);
 }
 
+interface AISummaryData {
+  earlyGame?: string;
+  midGame?: string;
+  lateGame?: string;
+  teamComp?: string;
+  optimalPlan?: string;
+  summary?: string;
+  powerCurves?: any;
+}
+
 function AISummary({ matchData, language, onSummaryGenerated, customApiKey, setCustomApiKey }: { matchData: any; language: "PL" | "EN"; onSummaryGenerated: (data: any) => void, customApiKey: string, setCustomApiKey: (key: string) => void }) {
-  const [data, setData] = useState<{summary: string, powerCurves: any}>({summary: "", powerCurves: null});
+  const [data, setData] = useState<AISummaryData>({});
   const [loading, setLoading] = useState<boolean>(true);
 
   const matchDataStr = JSON.stringify(matchData);
@@ -690,8 +856,7 @@ function AISummary({ matchData, language, onSummaryGenerated, customApiKey, setC
         setData({
           summary: language === "PL" 
             ? `Błąd API: Twój domyślny klucz z Google AI Studio jest nieprawidłowy, lub limit został wyczerpany. Wpisz własny klucz API w polu poniżej (w prawym górnym rogu podsumowania). Szczegóły: ${error.message || error}`
-            : `API Error: Your default Google AI Studio key is invalid or quota exceeded. Please enter your custom API key in the field below. Details: ${error.message || error}`, 
-          powerCurves: null
+            : `API Error: Your default Google AI Studio key is invalid or quota exceeded. Please enter your custom API key in the field below. Details: ${error.message || error}`
         });
       } finally {
         setLoading(false);
@@ -702,7 +867,7 @@ function AISummary({ matchData, language, onSummaryGenerated, customApiKey, setC
 
   return (
     <div className="mt-6 bg-[#111] border border-[#1f2833] rounded-xl p-4">
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-4">
         <h3 className="text-sm font-bold text-[#66fcf1] uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-5 h-5" /> AI Tactical Summary
         </h3>
@@ -714,12 +879,91 @@ function AISummary({ matchData, language, onSummaryGenerated, customApiKey, setC
             className="bg-[#0b0c10] border border-[#1f2833] text-xs text-white p-2 rounded"
         />
       </div>
+      
       {loading ? (
-        <div className="flex items-center gap-2 text-gray-400 text-xs">
-          <Loader2 className="w-4 h-4 animate-spin" /> Generating tactical insights...
+        <div className="flex flex-col items-center justify-center py-10 gap-3 text-gray-400 text-xs bg-[#0b0c10]/40 rounded-lg border border-[#1f2833]/30">
+          <Loader2 className="w-6 h-6 animate-spin text-[#66fcf1]" />
+          <span className="font-medium tracking-wider uppercase text-[10px] text-gray-500 animate-pulse">
+            {language === "PL" ? "Generowanie taktycznych wskazówek..." : "Generating tactical insights..."}
+          </span>
         </div>
       ) : (
-        <div className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap">{data.summary}</div>
+        <div className="flex flex-col gap-5 mt-2 animate-fadeIn">
+          {/* If there's an error/legacy string fallback */}
+          {data.summary && (
+            <div className="text-xs text-gray-300 leading-relaxed whitespace-pre-wrap bg-[#0b0c10]/40 p-4 rounded-lg border border-[#1f2833]/30">
+              {data.summary}
+            </div>
+          )}
+
+          {/* New Structured Fields */}
+          {(data.earlyGame || data.midGame || data.lateGame) && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Early Game Phase Card */}
+              <div className="bg-[#0b0c10]/75 border border-blue-950/40 rounded-lg p-3.5 flex flex-col gap-2 transition-all hover:border-blue-900/40">
+                <div className="flex items-center gap-2 border-b border-blue-950/50 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                  <span className="font-bold text-[#66fcf1] uppercase tracking-wider text-[10px]">
+                    {language === "PL" ? "FAZA POCZĄTKOWA (EARLY)" : "EARLY GAME PHASE"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-300 leading-relaxed font-light">{data.earlyGame}</p>
+              </div>
+
+              {/* Mid Game Phase Card */}
+              <div className="bg-[#0b0c10]/75 border border-purple-950/40 rounded-lg p-3.5 flex flex-col gap-2 transition-all hover:border-purple-900/40">
+                <div className="flex items-center gap-2 border-b border-purple-950/50 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                  <span className="font-bold text-[#66fcf1] uppercase tracking-wider text-[10px]">
+                    {language === "PL" ? "FAZA ŚRODKOWA (MID)" : "MID GAME PHASE"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-300 leading-relaxed font-light">{data.midGame}</p>
+              </div>
+
+              {/* Late Game Phase Card */}
+              <div className="bg-[#0b0c10]/75 border border-red-950/40 rounded-lg p-3.5 flex flex-col gap-2 transition-all hover:border-red-900/40">
+                <div className="flex items-center gap-2 border-b border-red-900/50 pb-2">
+                  <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                  <span className="font-bold text-[#66fcf1] uppercase tracking-wider text-[10px]">
+                    {language === "PL" ? "FAZA PÓŹNA (LATE)" : "LATE GAME PHASE"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-300 leading-relaxed font-light">{data.lateGame}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Team Composition Card */}
+          {data.teamComp && (
+            <div className="bg-[#0b0c10]/60 border border-[#1f2833]/30 rounded-lg p-4 flex flex-col gap-2">
+              <div className="flex items-center gap-2 border-b border-[#1f2833]/20 pb-2">
+                <span className="text-[#45a29e] text-xs font-black uppercase tracking-widest">
+                  {language === "PL" ? "Kompozycja i Walki Drużynowe (Teamfight Comp)" : "Teamfight Composition Analysis"}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-300 leading-relaxed font-light whitespace-pre-line">{data.teamComp}</p>
+            </div>
+          )}
+
+          {/* Optimal Winning Plan Card */}
+          {data.optimalPlan && (
+            <div className="bg-[#1f2833]/15 border-2 border-[#66fcf1]/40 rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#66fcf1]/5 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center gap-2 pb-1.5">
+                <div className="w-5 h-5 rounded-full bg-[#66fcf1]/20 flex items-center justify-center border border-[#66fcf1]/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#66fcf1]" />
+                </div>
+                <span className="font-black text-[#66fcf1] uppercase tracking-wider text-xs">
+                  {language === "PL" ? "OPTYMALNY PLAN NA WYGRANĄ" : "OPTIMAL WINNING PLAN"}
+                </span>
+              </div>
+              <p className="text-xs text-white leading-relaxed font-medium whitespace-pre-line bg-[#0b0c10]/60 p-3 rounded-lg border border-[#66fcf1]/10">
+                {data.optimalPlan}
+              </p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
