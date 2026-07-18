@@ -563,6 +563,69 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
   );
 }
 
+async function generateSummaryDirect(matchData: any, language: "PL" | "EN", apiKey: string) {
+  const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100.
+Also provide a concise, high-level tactical summary in ${language === 'PL' ? 'Polish' : 'English'} of the player's champion role, what they should do early, mid, and late game, and overall team composition strengths.
+
+Return your response strictly in the following JSON structure:
+{
+  "summary": "Your detailed tactical summary in Polish or English depending on language...",
+  "powerCurves": {
+    "championname": {
+      "early": <number 0-100>,
+      "mid": <number 0-100>,
+      "late": <number 0-100>,
+      "archetype": "Brief archetype description (e.g. Scaling Hypercarry, Early Bully) in ${language === 'PL' ? 'Polish' : 'English'}",
+      "tips": "Brief tactical tips for this champion in ${language === 'PL' ? 'Polish' : 'English'}"
+    }
+  }
+}
+
+Use lowercase, alphanumeric-only champion names as keys in the powerCurves map (e.g. "garen", "leesin", "missfortune", "jarvaniv"). Evaluate all 10 participants.
+Data: ${JSON.stringify(matchData)}`;
+
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        responseMimeType: "application/json"
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let message = "Gemini API request failed";
+    try {
+      const errJson = JSON.parse(errText);
+      message = errJson.error?.message || message;
+    } catch (e) {}
+    throw new Error(message);
+  }
+
+  const resJson = await response.json();
+  const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("No text response received from Gemini");
+  }
+
+  return JSON.parse(text);
+}
+
 function AISummary({ matchData, language, onSummaryGenerated, customApiKey, setCustomApiKey }: { matchData: any; language: "PL" | "EN"; onSummaryGenerated: (data: any) => void, customApiKey: string, setCustomApiKey: (key: string) => void }) {
   const [data, setData] = useState<{summary: string, powerCurves: any}>({summary: "", powerCurves: null});
   const [loading, setLoading] = useState<boolean>(true);
@@ -578,6 +641,26 @@ function AISummary({ matchData, language, onSummaryGenerated, customApiKey, setC
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ matchData, language, customApiKey }),
         });
+        
+        // Handle 404/405 static fallback (e.g. GitHub Pages)
+        if (response.status === 404 || response.status === 405) {
+          if (customApiKey && customApiKey.trim() !== "") {
+            console.warn("Proxy endpoint not found. Falling back to direct browser call to Gemini...");
+            const directResult = await generateSummaryDirect(matchData, language, customApiKey);
+            setData(directResult);
+            if (directResult.powerCurves) {
+              onSummaryGenerated(directResult.powerCurves);
+            }
+            return;
+          } else {
+            throw new Error(
+              language === "PL"
+                ? "Brak serwera (np. GitHub Pages). Wprowadź swój własny klucz API Gemini (u góry po prawej), aby wygenerować podsumowanie bezpośrednio w przeglądarce!"
+                : "No server backend detected (e.g. GitHub Pages). Please enter your custom Gemini API key in the field above to run generation directly in your browser!"
+            );
+          }
+        }
+
         const result = await response.json();
         if (!response.ok) {
           throw new Error(result.message || result.error || "Failed to generate summary");
@@ -587,6 +670,22 @@ function AISummary({ matchData, language, onSummaryGenerated, customApiKey, setC
           onSummaryGenerated(result.powerCurves);
         }
       } catch (error: any) {
+        // If it was any other error but customApiKey exists, try direct client fallback
+        if (customApiKey && customApiKey.trim() !== "") {
+          try {
+            console.warn("Proxy request failed. Attempting direct browser call to Gemini as fallback...");
+            const directResult = await generateSummaryDirect(matchData, language, customApiKey);
+            setData(directResult);
+            if (directResult.powerCurves) {
+              onSummaryGenerated(directResult.powerCurves);
+            }
+            return;
+          } catch (directError: any) {
+            console.error("Direct browser call also failed:", directError);
+            error = directError;
+          }
+        }
+
         console.error("Failed to load tactical summary:", error);
         setData({
           summary: language === "PL" 

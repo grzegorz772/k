@@ -31,19 +31,48 @@ function getPlatformRouter(tag: string) {
 }
 
 async function proxyRiotReq(url: string, apiKey: string) {
-  const res = await fetch("/api/riot", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-riot-token": apiKey,
-    },
-    body: JSON.stringify({ url }),
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || data.status?.message || "Riot API Error");
+  try {
+    const res = await fetch("/api/riot", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-riot-token": apiKey,
+      },
+      body: JSON.stringify({ url }),
+    });
+    
+    // If we get 404 or 405, it means we are on GitHub Pages or another static host where the backend does not exist.
+    if (res.status === 404 || res.status === 405) {
+      console.warn("Proxy endpoint not found (status " + res.status + "). Falling back to direct client request...");
+      return await directRiotReq(url, apiKey);
+    }
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || data.status?.message || "Riot API Error");
+    }
+    return data;
+  } catch (err: any) {
+    console.warn("Proxy request failed, attempting direct request as fallback:", err);
+    return await directRiotReq(url, apiKey);
   }
-  return data;
+}
+
+async function directRiotReq(url: string, apiKey: string) {
+  const res = await fetch(url, {
+    headers: {
+      "X-Riot-Token": apiKey,
+    }
+  });
+  if (!res.ok) {
+    let errMsg = "Riot API Error";
+    try {
+      const errData = await res.json();
+      errMsg = errData.status?.message || errMsg;
+    } catch (e) {}
+    throw new Error(errMsg);
+  }
+  return res.json();
 }
 
 export async function fetchAccount(gameName: string, tagLine: string, apiKey: string): Promise<RiotAccount> {
