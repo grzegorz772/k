@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { TrendingUp, Swords, ChevronDown, ChevronUp, Clock, Info, Sparkles, Loader2 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 interface Runes {
   glowne: string;
@@ -302,14 +302,45 @@ export function getChampionRCooldown(champName: string, curveRCooldown?: string)
 export default function PreMatchPlan({ participants, ourChampion, latestVersion = "14.22.1", isLive = false }: PreMatchPlanProps) {
   const [language, setLanguage] = useState<"PL" | "EN">("PL");
   const [powerCurves, setPowerCurves] = useState<any>(null);
-  const [customApiKey, setCustomApiKey] = useState<string>("");
+  const [customApiKey, setCustomApiKey] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem("gemini_api_key");
+      if (stored) return stored;
+      
+      const cookies = document.cookie.split(";");
+      for (let c of cookies) {
+        c = c.trim();
+        if (c.startsWith("gemini_api_key=")) {
+          return decodeURIComponent(c.substring("gemini_api_key=".length));
+        }
+      }
+    } catch (e) {}
+    return "";
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("gemini_api_key", customApiKey);
+      document.cookie = `gemini_api_key=${encodeURIComponent(customApiKey)}; max-age=31536000; path=/; SameSite=Lax`;
+    } catch (e) {
+      console.warn("Failed to persist custom API key:", e);
+    }
+  }, [customApiKey]);
+
+  const [expandedChamp, setExpandedChamp] = useState<string | null>(null);
 
   const getCurve = (champName: string) => {
     const key = champName.toLowerCase().replace(/[^a-z0-9]/g, "");
     if (powerCurves && powerCurves[key]) {
       return powerCurves[key];
     }
-    return null;
+    const dbCurve = getChampionPowerCurve(champName);
+    return {
+      early: dbCurve.early,
+      mid: dbCurve.mid,
+      late: dbCurve.late,
+      rCooldown: DEFAULT_R_COOLDOWNS[key] || "120/100/80"
+    };
   };
 
   // Group participants by team
@@ -349,6 +380,109 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
     ];
   }, [redTeam]);
 
+  const individualPowerProgression = useMemo(() => {
+    const phases = [
+      { id: "early", name: language === "PL" ? "Early (Lvl 1-6)" : "Early (Lvl 1-6)" },
+      { id: "mid", name: language === "PL" ? "Mid (1-2 Items)" : "Mid (1-2 Items)" },
+      { id: "late", name: language === "PL" ? "Late (3+ Items)" : "Late (3+ Items)" }
+    ];
+
+    return phases.map((phase) => {
+      const dataPoint: any = { phase: phase.name };
+      
+      cleanBlueTeam.forEach((p) => {
+        const curve = getCurve(p.champion);
+        const val = curve ? curve[phase.id as "early" | "mid" | "late"] : 50;
+        dataPoint[p.champion] = val;
+      });
+
+      cleanRedTeam.forEach((p) => {
+        const curve = getCurve(p.champion);
+        const val = curve ? curve[phase.id as "early" | "mid" | "late"] : 50;
+        dataPoint[p.champion] = val;
+      });
+
+      return dataPoint;
+    });
+  }, [cleanBlueTeam, cleanRedTeam, powerCurves, language]);
+
+  const getParticipantColor = (p: any, blueIndex: number, redIndex: number) => {
+    if (p.is_player) {
+      return "#00ff66"; // Bright Neon Green
+    }
+    if (p.team === "Blue") {
+      const blueShades = ["#3b82f6", "#06b6d4", "#2563eb", "#60a5fa", "#0ea5e9"];
+      return blueShades[blueIndex % blueShades.length];
+    } else {
+      const redShades = ["#ef4444", "#f97316", "#dc2626", "#f87171", "#ec4899"];
+      return redShades[redIndex % redShades.length];
+    }
+  };
+
+  const participantLines = useMemo(() => {
+    let blueIdx = 0;
+    let redIdx = 0;
+    
+    const lines: any[] = [];
+    
+    cleanBlueTeam.forEach((p) => {
+      const color = getParticipantColor(p, blueIdx, redIdx);
+      if (p.team === "Blue") blueIdx++;
+      lines.push({
+        dataKey: p.champion,
+        name: p.champion,
+        color,
+        isPlayer: p.is_player,
+        team: p.team
+      });
+    });
+
+    cleanRedTeam.forEach((p) => {
+      const color = getParticipantColor(p, blueIdx, redIdx);
+      if (p.team === "Red") redIdx++;
+      lines.push({
+        dataKey: p.champion,
+        name: p.champion,
+        color,
+        isPlayer: p.is_player,
+        team: p.team
+      });
+    });
+
+    return lines;
+  }, [cleanBlueTeam, cleanRedTeam]);
+
+  const getMatchupTips = (p: Participant) => {
+    const curve = getCurve(p.champion);
+    const ourChampName = ourChampion || "Cho'Gath";
+    
+    if (curve && curve.earlyTip) {
+      return {
+        earlyTip: curve.earlyTip,
+        lateTip: curve.lateTip,
+        killable: curve.killable || (curve.early < 60 ? (language === "PL" ? "Tak" : "Yes") : (language === "PL" ? "Nie" : "No")),
+        killableReason: curve.killableReason || ""
+      };
+    }
+    
+    const isPl = language === "PL";
+    const databaseCurve = getChampionPowerCurve(p.champion);
+    const isKillable = databaseCurve.early < 60;
+    
+    return {
+      earlyTip: isPl 
+        ? `Graj uważnie. Szukaj wymian, gdy przeciwnik zużyje swoje główne umiejętności kontroli tłumu.` 
+        : `Play cautiously. Look for trades when they waste their primary crowd control skills.`,
+      lateTip: isPl 
+        ? `Pozycjonuj się bezpiecznie z tyłu, uważaj na inicjację i pomagaj drużynie kontrolować mapę.` 
+        : `Position yourself safely in the back, watch out for their initiation, and help the team control the map.`,
+      killable: isKillable ? (isPl ? "Tak" : "Yes") : (isPl ? "Nie" : "No"),
+      killableReason: isKillable
+        ? (isPl ? `Ma słabsze wczesne poziomy, więc ${ourChampName} może go zdominować przy agresywnej grze.` : `Has weaker early levels, so ${ourChampName} can dominate them with aggressive play.`)
+        : (isPl ? `Posiada dużą obronę lub zasięg, bezpieczniej grać defensywnie i czekać na wsparcie dżunglera.` : `Has high defense or range, safer to play defensively and wait for jungler assistance.`)
+    };
+  };
+
   // Calculate Team Power Scores
   const teamPowerProgression = useMemo(() => {
     let blueEarlySum = 0, blueMidSum = 0, blueLateSum = 0;
@@ -382,7 +516,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
 
     return [
       { phase: "Early (Lvl 1-6)", Blue: Math.round(blueEarlySum / blueDiv), Red: Math.round(redEarlySum / redDiv) },
-      { phase: "Mid (1-2 Items)", Blue: Math.round(blueMidSum / blueDiv), Red: Math.round(redEarlySum / redDiv) }, // Fix: was redEarlySum, should be redMidSum
+      { phase: "Mid (1-2 Items)", Blue: Math.round(blueMidSum / blueDiv), Red: Math.round(redMidSum / redDiv) },
       { phase: "Late (3+ Items)", Blue: Math.round(blueLateSum / blueDiv), Red: Math.round(redLateSum / redDiv) },
     ];
   }, [cleanBlueTeam, cleanRedTeam, powerCurves]);
@@ -470,9 +604,9 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
         </div>
       </div>
 
-      {/* Team Scaling Comparison Graph */}
+      {/* Team Scaling & Individual Curves Comparison Graphs */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Graph */}
+        {/* Graph 1: Team averages */}
         <div className="lg:col-span-3 bg-[#111] border border-[#1f2833] rounded-xl p-4 flex flex-col min-h-[220px]">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-xs font-bold text-[#45a29e] uppercase tracking-wider flex items-center gap-2">
@@ -512,6 +646,56 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* Graph 2: Individual 10 Line Power Curves */}
+        <div className="lg:col-span-3 bg-[#111] border border-[#1f2833] rounded-xl p-4 flex flex-col min-h-[290px]">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+            <div>
+              <h3 className="text-xs font-bold text-[#66fcf1] uppercase tracking-wider flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" /> {language === "PL" ? "Indywidualne Krzywe Mocy (10 Bohaterów)" : "Individual Power Curves (10 Champions)"}
+              </h3>
+              <p className="text-[9px] text-gray-500 mt-0.5">
+                {language === "PL" 
+                  ? "Porównanie przebiegu gry wszystkich uczestników meczu. Twoja postać wyróżniona jest na zielono." 
+                  : "Comparison of game scaling for all 10 participants. Your champion is highlighted in Green."}
+              </p>
+            </div>
+            {/* Minimal Legends */}
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[8.5px] font-bold max-w-full sm:max-w-md bg-[#0b0c10]/50 p-2 rounded border border-[#1f2833]/50">
+              {participantLines.map((line) => (
+                <span key={line.dataKey} className="flex items-center gap-1" style={{ color: line.color }}>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: line.color }} />
+                  {line.name} {line.isPlayer && (language === "PL" ? "(TY)" : "(YOU)")}
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          <div className="flex-1 min-h-[180px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={individualPowerProgression} margin={{ top: 10, right: 15, left: -25, bottom: 0 }}>
+                <XAxis dataKey="phase" stroke="#45a29e" fontSize={10} tickLine={false} />
+                <YAxis stroke="#45a29e" fontSize={10} domain={[0, 100]} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: "#0b0c10", borderColor: "#1f2833", borderRadius: "8px", fontSize: "11px" }}
+                  labelClassName="text-[#66fcf1] font-bold"
+                />
+                {participantLines.map((line) => (
+                  <Line 
+                    key={line.dataKey}
+                    type="monotone"
+                    dataKey={line.dataKey}
+                    name={line.name}
+                    stroke={line.color}
+                    strokeWidth={line.isPlayer ? 3.5 : 2}
+                    activeDot={{ r: line.isPlayer ? 7 : 4 }}
+                    dot={{ r: line.isPlayer ? 3.5 : 1.5 }}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       {/* Compositions & Champion Power Spikes */}
@@ -528,6 +712,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
           <div className="flex flex-col gap-2">
             {cleanBlueTeam.map((p) => {
               const curve = getCurve(p.champion);
+              const isExpanded = expandedChamp === `${p.team}-${p.champion}`;
               
               return (
                 <div 
@@ -541,7 +726,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-bold text-white">{p.champion}</span>
                           {p.is_player && (
-                            <span className="bg-[#66fcf1] text-[#0b0c10] text-[7px] font-black uppercase px-1 py-[1px] rounded">
+                            <span className="bg-[#66fcf1] text-[#0b0c10] text-[7px] font-black uppercase px-1 py-[1px] rounded animate-pulse">
                               TY
                             </span>
                           )}
@@ -588,12 +773,60 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
                       )}
                     </div>
 
-                    {/* R Cooldown Badge */}
-                    <div className="flex flex-col items-center justify-center shrink-0 min-w-[75px] select-none bg-[#111]/80 border border-gray-800/80 px-2.5 py-1.5 rounded text-center self-end sm:self-center">
-                      <span className="text-[7px] text-[#45a29e] font-black uppercase tracking-wider mb-0.5">Cooldown R</span>
-                      <span className="text-[10.5px] font-mono font-bold text-[#66fcf1]">{getChampionRCooldown(p.champion, curve?.rCooldown)}s</span>
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      {/* R Cooldown Badge */}
+                      <div className="flex flex-col items-center justify-center shrink-0 min-w-[75px] select-none bg-[#111]/80 border border-gray-800/80 px-2.5 py-1.5 rounded text-center">
+                        <span className="text-[7px] text-[#45a29e] font-black uppercase tracking-wider mb-0.5">Cooldown R</span>
+                        <span className="text-[10.5px] font-mono font-bold text-[#66fcf1]">{getChampionRCooldown(p.champion, curve?.rCooldown)}s</span>
+                      </div>
+
+                      {/* Expand Tip Button (Only for non-player champions) */}
+                      {!p.is_player && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const key = `${p.team}-${p.champion}`;
+                            setExpandedChamp(expandedChamp === key ? null : key);
+                          }}
+                          className="p-1.5 text-gray-500 hover:text-[#66fcf1] transition-colors cursor-pointer rounded-md hover:bg-[#111]"
+                        >
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                      )}
                     </div>
                   </div>
+
+                  {/* Expandable Strategic Tips */}
+                  {isExpanded && !p.is_player && (() => {
+                    const tips = getMatchupTips(p);
+                    return (
+                      <div className="mt-2.5 pt-2 border-t border-[#1f2833]/60 text-[10px] text-gray-300 flex flex-col gap-2 animate-fadeIn bg-[#111]/40 p-2.5 rounded-lg border border-gray-800/40">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <span className="text-[#45a29e] font-black uppercase text-[8px] tracking-wider block mb-0.5">
+                              {language === "PL" ? "Faza Początkowa (Early)" : "Early Game Advice"}
+                            </span>
+                            <p className="text-gray-300 font-light leading-relaxed text-[9.5px]">{tips.earlyTip}</p>
+                          </div>
+                          <div>
+                            <span className="text-[#45a29e] font-black uppercase text-[8px] tracking-wider block mb-0.5">
+                              {language === "PL" ? "Faza Późna (Late)" : "Late Game Advice"}
+                            </span>
+                            <p className="text-gray-300 font-light leading-relaxed text-[9.5px]">{tips.lateTip}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 items-center mt-1 pt-1.5 border-t border-gray-800/40">
+                          <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider ${tips.killable.toLowerCase().includes("ta") || tips.killable.toLowerCase().includes("ye") ? "bg-emerald-950/80 text-emerald-400 border border-emerald-800/50" : "bg-rose-950/80 text-rose-400 border border-rose-800/50"}`}>
+                            {language === "PL" ? `Do zabicia (Killable): ${tips.killable}` : `Killable: ${tips.killable}`}
+                          </span>
+                          {tips.killableReason && (
+                            <p className="text-[9px] text-gray-400 italic flex-1 min-w-[120px]">{tips.killableReason}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -622,6 +855,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
           <div className="flex flex-col gap-2">
             {cleanRedTeam.map((p) => {
               const curve = getCurve(p.champion);
+              const isExpanded = expandedChamp === `${p.team}-${p.champion}`;
               
               return (
                 <div 
@@ -635,7 +869,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-bold text-white">{p.champion}</span>
                           {p.is_player && (
-                            <span className="bg-[#66fcf1] text-[#0b0c10] text-[7px] font-black uppercase px-1 py-[1px] rounded">
+                            <span className="bg-[#66fcf1] text-[#0b0c10] text-[7px] font-black uppercase px-1 py-[1px] rounded animate-pulse">
                               TY
                             </span>
                           )}
@@ -682,12 +916,60 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
                       )}
                     </div>
 
-                    {/* R Cooldown Badge */}
-                    <div className="flex flex-col items-center justify-center shrink-0 min-w-[75px] select-none bg-[#111]/80 border border-gray-800/80 px-2.5 py-1.5 rounded text-center self-end sm:self-center">
-                      <span className="text-[7px] text-[#45a29e] font-black uppercase tracking-wider mb-0.5">Cooldown R</span>
-                      <span className="text-[10.5px] font-mono font-bold text-[#66fcf1]">{getChampionRCooldown(p.champion, curve?.rCooldown)}s</span>
+                    <div className="flex items-center gap-2 self-end sm:self-center">
+                      {/* R Cooldown Badge */}
+                      <div className="flex flex-col items-center justify-center shrink-0 min-w-[75px] select-none bg-[#111]/80 border border-gray-800/80 px-2.5 py-1.5 rounded text-center">
+                        <span className="text-[7px] text-[#45a29e] font-black uppercase tracking-wider mb-0.5">Cooldown R</span>
+                        <span className="text-[10.5px] font-mono font-bold text-[#66fcf1]">{getChampionRCooldown(p.champion, curve?.rCooldown)}s</span>
+                      </div>
+
+                      {/* Expand Tip Button (Only for non-player champions) */}
+                      {!p.is_player && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const key = `${p.team}-${p.champion}`;
+                            setExpandedChamp(expandedChamp === key ? null : key);
+                          }}
+                          className="p-1.5 text-gray-500 hover:text-[#66fcf1] transition-colors cursor-pointer rounded-md hover:bg-[#111]"
+                        >
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                      )}
                     </div>
                   </div>
+
+                  {/* Expandable Strategic Tips */}
+                  {isExpanded && !p.is_player && (() => {
+                    const tips = getMatchupTips(p);
+                    return (
+                      <div className="mt-2.5 pt-2 border-t border-[#1f2833]/60 text-[10px] text-gray-300 flex flex-col gap-2 animate-fadeIn bg-[#111]/40 p-2.5 rounded-lg border border-gray-800/40">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <span className="text-[#45a29e] font-black uppercase text-[8px] tracking-wider block mb-0.5">
+                              {language === "PL" ? "Faza Początkowa (Early)" : "Early Game Advice"}
+                            </span>
+                            <p className="text-gray-300 font-light leading-relaxed text-[9.5px]">{tips.earlyTip}</p>
+                          </div>
+                          <div>
+                            <span className="text-[#45a29e] font-black uppercase text-[8px] tracking-wider block mb-0.5">
+                              {language === "PL" ? "Faza Późna (Late)" : "Late Game Advice"}
+                            </span>
+                            <p className="text-gray-300 font-light leading-relaxed text-[9.5px]">{tips.lateTip}</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 items-center mt-1 pt-1.5 border-t border-gray-800/40">
+                          <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-black uppercase tracking-wider ${tips.killable.toLowerCase().includes("ta") || tips.killable.toLowerCase().includes("ye") ? "bg-emerald-950/80 text-emerald-400 border border-emerald-800/50" : "bg-rose-950/80 text-rose-400 border border-rose-800/50"}`}>
+                            {language === "PL" ? `Do zabicia (Killable): ${tips.killable}` : `Killable: ${tips.killable}`}
+                          </span>
+                          {tips.killableReason && (
+                            <p className="text-[9px] text-gray-400 italic flex-1 min-w-[120px]">{tips.killableReason}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -710,13 +992,16 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
 }
 
 async function generateSummaryDirect(matchData: any, language: "PL" | "EN", apiKey: string) {
+  const ourChampion = matchData?.ourChampion || "Cho'Gath";
   const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100. Also estimate the exact or approximate base cooldown of their Ultimate (R) ability in seconds at ranks 1, 2, 3 (levels 6, 11, 16) as a string formatted like "120/100/80".
+
+You are an expert League of Legends coach. Write your analysis strictly from the perspective of the player playing ${ourChampion}, advising them on how to play their role, deal with matchups, and win.
 
 Provide a comprehensive tactical analysis strictly in ${language === 'PL' ? 'Polish (Polski)' : 'English'}.
 Your analysis must detail:
-1. EARLY GAME: Lane strategy with Cho'Gath (or player's champion if not Cho'Gath) and overall early macro.
-2. MID GAME: Mid-game transition, objective focus, and side-lane / macro control with Cho'Gath.
-3. LATE GAME: Late-game scaling, teamfighting, or split-pushing with Cho'Gath.
+1. EARLY GAME: Lane strategy with ${ourChampion} and overall early macro.
+2. MID GAME: Mid-game transition, objective focus, and side-lane / macro control with ${ourChampion}.
+3. LATE GAME: Late-game scaling, teamfighting, or split-pushing with ${ourChampion}.
 4. TEAM COMPOSITION & TEAMFIGHTS: Deep dive into the allied and enemy team compositions, explaining why they are structured this way, what their win/loss dynamics are, and how they interact in teamfights.
 5. OPTIMAL WINNING PLAN: The absolute best, most optimal step-by-step strategy/plan to secure a win.
 
@@ -732,7 +1017,11 @@ Return your response strictly in the following JSON structure:
       "early": <number 0-100>,
       "mid": <number 0-100>,
       "late": <number 0-100>,
-      "rCooldown": "cooldown in seconds at level 6/11/16, e.g. '120/100/80'"
+      "rCooldown": "cooldown in seconds at level 6/11/16, e.g. '120/100/80'",
+      "earlyTip": "Brief early-game matchup advice from the perspective of ${ourChampion} in ${language === 'PL' ? 'Polish' : 'English'}...",
+      "lateTip": "Brief late-game matchup/teamfight advice from the perspective of ${ourChampion} in ${language === 'PL' ? 'Polish' : 'English'}...",
+      "killable": "Yes or No",
+      "killableReason": "Brief reason why they are/aren't killable by ${ourChampion} in ${language === 'PL' ? 'Polish' : 'English'}..."
     }
   }
 }

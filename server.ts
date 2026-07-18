@@ -37,13 +37,16 @@ async function startServer() {
             }
         });
         
+        const ourChampion = matchData?.ourChampion || "Cho'Gath";
         const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100. Also estimate the exact or approximate base cooldown of their Ultimate (R) ability in seconds at ranks 1, 2, 3 (levels 6, 11, 16) as a string formatted like "120/100/80".
+
+You are an expert League of Legends coach. Write your analysis strictly from the perspective of the player playing ${ourChampion}, advising them on how to play their role, deal with matchups, and win.
 
 Provide a comprehensive tactical analysis strictly in ${language === 'PL' ? 'Polish (Polski)' : 'English'}.
 Your analysis must detail:
-1. EARLY GAME: Lane strategy with Cho'Gath (or player's champion if not Cho'Gath) and overall early macro.
-2. MID GAME: Mid-game transition, objective focus, and side-lane / macro control with Cho'Gath.
-3. LATE GAME: Late-game scaling, teamfighting, or split-pushing with Cho'Gath.
+1. EARLY GAME: Lane strategy with ${ourChampion} and overall early macro.
+2. MID GAME: Mid-game transition, objective focus, and side-lane / macro control with ${ourChampion}.
+3. LATE GAME: Late-game scaling, teamfighting, or split-pushing with ${ourChampion}.
 4. TEAM COMPOSITION & TEAMFIGHTS: Deep dive into the allied and enemy team compositions, explaining why they are structured this way, what their win/loss dynamics are, and how they interact in teamfights.
 5. OPTIMAL WINNING PLAN: The absolute best, most optimal step-by-step strategy/plan to secure a win.
 
@@ -59,7 +62,11 @@ Return your response strictly in the following JSON structure:
       "early": <number 0-100>,
       "mid": <number 0-100>,
       "late": <number 0-100>,
-      "rCooldown": "cooldown in seconds at level 6/11/16, e.g. '120/100/80'"
+      "rCooldown": "cooldown in seconds at level 6/11/16, e.g. '120/100/80'",
+      "earlyTip": "Brief early-game matchup advice from the perspective of ${ourChampion} in ${language === 'PL' ? 'Polish' : 'English'}...",
+      "lateTip": "Brief late-game matchup/teamfight advice from the perspective of ${ourChampion} in ${language === 'PL' ? 'Polish' : 'English'}...",
+      "killable": "Yes or No",
+      "killableReason": "Brief reason why they are/aren't killable by ${ourChampion} in ${language === 'PL' ? 'Polish' : 'English'}..."
     }
   }
 }

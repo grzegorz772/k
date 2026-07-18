@@ -220,7 +220,7 @@ MECZ DATA:
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 bg-[#66fcf1] rounded-full shadow-[0_0_8px_#66fcf1]"></div>
           <h1 className="text-sm font-bold tracking-widest uppercase text-[#66fcf1]">
-            Riot Match Analyzer <span className="text-[#45a29e] opacity-50 px-2">v1.4.0</span>
+            Riot Match Analyzer <span className="text-[#45a29e] opacity-50 px-2">v1.4.1</span>
           </h1>
         </div>
         <div className="flex gap-2">
