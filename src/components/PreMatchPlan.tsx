@@ -349,17 +349,17 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
     };
   };
 
+  // Language toggle UI
+  const LanguageToggle = () => (
+    <div className="flex bg-[#1f2833] rounded-lg p-1 border border-[#45a29e]/30 animate-fadeIn">
+      <button onClick={() => setLanguage("PL")} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${language === "PL" ? "bg-[#66fcf1] text-[#0b0c10]" : "text-[#45a29e] hover:text-[#66fcf1]"}`}>PL</button>
+      <button onClick={() => setLanguage("EN")} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${language === "EN" ? "bg-[#66fcf1] text-[#0b0c10]" : "text-[#45a29e] hover:text-[#66fcf1]"}`}>EN</button>
+    </div>
+  );
+
   // Group participants by team
   const blueTeam = useMemo(() => participants.filter((p) => p.team === "Blue"), [participants]);
   const redTeam = useMemo(() => participants.filter((p) => p.team === "Red"), [participants]);
-
-  // Language toggle UI
-  const LanguageToggle = () => (
-    <div className="flex bg-[#1f2833] rounded-lg p-1 border border-[#45a29e]/30">
-      <button onClick={() => setLanguage("PL")} className={`px-2 py-1 rounded text-[10px] font-bold ${language === "PL" ? "bg-[#66fcf1] text-[#0b0c10]" : "text-[#45a29e]"}`}>PL</button>
-      <button onClick={() => setLanguage("EN")} className={`px-2 py-1 rounded text-[10px] font-bold ${language === "EN" ? "bg-[#66fcf1] text-[#0b0c10]" : "text-[#45a29e]"}`}>EN</button>
-    </div>
-  );
 
   // If we don't have exactly 10 participants, try to fill mock details or deal with empty team slots
   const cleanBlueTeam = useMemo(() => {
@@ -385,6 +385,88 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
       { name: "Gracz 10", champion: "Malphite", team: "Red" as const, is_player: false, runy: { glowne: "Comet", sciezka: "Sorcery" } },
     ];
   }, [redTeam]);
+
+  // Find player champion
+  const playerParticipant = useMemo(() => {
+    return cleanBlueTeam.find((p) => p.is_player) || cleanRedTeam.find((p) => p.is_player) || participants.find((p) => p.is_player);
+  }, [cleanBlueTeam, cleanRedTeam, participants]);
+
+  // Roles in Polish/English mapping
+  const roleOptions = useMemo(() => [
+    { value: "TOP", label: language === "PL" ? "Górna linia (Top)" : "Top Lane" },
+    { value: "JUNGLE", label: language === "PL" ? "Dżungla (Jungle)" : "Jungle" },
+    { value: "MID", label: language === "PL" ? "Środkowa linia (Mid)" : "Mid Lane" },
+    { value: "ADC", label: language === "PL" ? "Dół (ADC)" : "Bot Lane (ADC)" },
+    { value: "SUPPORT", label: language === "PL" ? "Wsparcie (Support)" : "Support" }
+  ], [language]);
+
+  const [selectedRole, setSelectedRole] = useState<string>(() => {
+    if (playerParticipant) {
+      const pPos = (playerParticipant as any).position || (playerParticipant as any).role || "";
+      if (pPos) {
+        const pPosUpper = pPos.toUpperCase();
+        if (pPosUpper.includes("TOP")) return "TOP";
+        if (pPosUpper.includes("JUG") || pPosUpper.includes("JUNGLE")) return "JUNGLE";
+        if (pPosUpper.includes("MID") || pPosUpper.includes("MIDDLE")) return "MID";
+        if (pPosUpper.includes("BOTTOM") || pPosUpper.includes("BOT") || pPosUpper.includes("ADC")) return "ADC";
+        if (pPosUpper.includes("SUP") || pPosUpper.includes("UTILITY")) return "SUPPORT";
+      }
+    }
+    return "MID";
+  });
+
+  const enemyTeam = useMemo(() => {
+    if (playerParticipant) {
+      return playerParticipant.team === "Blue" ? cleanRedTeam : cleanBlueTeam;
+    }
+    return cleanRedTeam;
+  }, [playerParticipant, cleanBlueTeam, cleanRedTeam]);
+
+  const [selectedOpponent, setSelectedOpponent] = useState<string>("");
+
+  // Initialize selected opponent and role based on similar lane/order if available
+  useEffect(() => {
+    if (playerParticipant) {
+      const pPos = (playerParticipant as any).position || (playerParticipant as any).role || "";
+      if (pPos) {
+        const pPosUpper = pPos.toUpperCase();
+        let guessedRole = "MID";
+        if (pPosUpper.includes("TOP")) guessedRole = "TOP";
+        else if (pPosUpper.includes("JUG") || pPosUpper.includes("JUNGLE")) guessedRole = "JUNGLE";
+        else if (pPosUpper.includes("MID") || pPosUpper.includes("MIDDLE")) guessedRole = "MID";
+        else if (pPosUpper.includes("BOTTOM") || pPosUpper.includes("BOT") || pPosUpper.includes("ADC")) guessedRole = "ADC";
+        else if (pPosUpper.includes("SUP") || pPosUpper.includes("UTILITY")) guessedRole = "SUPPORT";
+        setSelectedRole(guessedRole);
+      }
+    }
+  }, [playerParticipant]);
+
+  useEffect(() => {
+    if (enemyTeam.length > 0) {
+      // Try to align role positions first if available
+      const allyTeam = playerParticipant?.team === "Blue" ? cleanBlueTeam : cleanRedTeam;
+      const playerIdx = allyTeam.findIndex(p => p.is_player);
+      
+      // If we have position attributes, try to find enemy with the same position
+      const playerPos = playerParticipant ? ((playerParticipant as any).position || (playerParticipant as any).role || "").toUpperCase() : "";
+      if (playerPos) {
+        const matchingEnemy = enemyTeam.find(e => {
+          const ePos = ((e as any).position || (e as any).role || "").toUpperCase();
+          return ePos && ePos === playerPos;
+        });
+        if (matchingEnemy) {
+          setSelectedOpponent(matchingEnemy.champion);
+          return;
+        }
+      }
+
+      if (playerIdx !== -1 && enemyTeam[playerIdx]) {
+        setSelectedOpponent(enemyTeam[playerIdx].champion);
+      } else {
+        setSelectedOpponent(enemyTeam[0].champion);
+      }
+    }
+  }, [enemyTeam, playerParticipant, cleanBlueTeam, cleanRedTeam]);
 
   const individualPowerProgression = useMemo(() => {
     const phases = [
@@ -587,7 +669,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
   return (
     <div className="flex flex-col gap-4 overflow-y-auto h-full pr-1 scrollbar-thin max-h-[calc(100vh-10rem)] touch-pan-y pb-10">
       {/* Intro Banner */}
-      <div className="bg-gradient-to-r from-[#1f2833]/80 via-[#0b0c10]/95 to-[#1f2833]/80 border border-[#45a29e]/20 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl shrink-0">
+      <div className="bg-gradient-to-r from-[#1f2833]/80 via-[#0b0c10]/95 to-[#1f2833]/80 border border-[#45a29e]/20 rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl shrink-0 animate-fadeIn">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Swords className="w-4 h-4 text-[#66fcf1] animate-pulse" />
@@ -607,6 +689,80 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
               {isLive ? "LIVE STATE GENERATED" : "PAST GAME RECONSTRUCTED"}
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* Configuration Panel for Lane & Matchup */}
+      <div className="bg-[#111] border border-[#1f2833]/80 rounded-xl p-4 flex flex-col gap-4 shadow-xl shrink-0 animate-slideDown">
+        <div className="flex items-center justify-between border-b border-[#1f2833] pb-2">
+          <h3 className="text-xs font-bold text-[#66fcf1] uppercase tracking-wider flex items-center gap-2">
+            <Swords className="w-4 h-4 text-[#66fcf1]" /> {language === "PL" ? "Twoja Linia i Przeciwnik (Matchup)" : "Your Lane & Matchup"}
+          </h3>
+          <span className="text-[10px] text-gray-400 font-mono italic">
+            {language === "PL" ? "* Zmiana generuje nową analizę taktyczną AI" : "* Changing generates a new AI analysis"}
+          </span>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Lane Selector */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+              {language === "PL" ? "Twoja Pozycja / Linia:" : "Your Position / Lane:"}
+            </label>
+            <div className="grid grid-cols-5 gap-1.5">
+              {roleOptions.map((opt) => {
+                const isActive = selectedRole === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setSelectedRole(opt.value)}
+                    className={`py-2 px-1 text-[10px] font-bold rounded border transition-all uppercase tracking-tight text-center ${
+                      isActive
+                        ? "bg-[#66fcf1] border-[#66fcf1] text-[#0b0c10] shadow-[0_0_8px_rgba(102,252,241,0.4)]"
+                        : "bg-[#0b0c10] border-[#1f2833] text-gray-400 hover:text-white hover:border-[#45a29e]"
+                    }`}
+                  >
+                    {opt.value}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Opponent Selector */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+              {language === "PL" ? "Twój Przeciwnik w Linii (Lane Opponent):" : "Your Direct Lane Opponent:"}
+            </label>
+            <div className="relative">
+              <select
+                value={selectedOpponent}
+                onChange={(e) => setSelectedOpponent(e.target.value)}
+                className="w-full bg-[#0b0c10] border border-[#1f2833] rounded px-3 py-2 text-xs text-white focus:border-[#66fcf1] outline-none cursor-pointer appearance-none"
+              >
+                {enemyTeam.map((e) => (
+                  <option key={e.champion} value={e.champion}>
+                    {e.champion} ({e.name})
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-[#45a29e]">
+                <ChevronDown className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Informative helper bar */}
+        <div className="bg-[#1f2833]/20 border border-[#45a29e]/20 rounded-lg p-2.5 flex items-center gap-2.5 text-[10px] text-gray-300">
+          <span className="text-[#66fcf1] font-bold">🎯 MATCHUP:</span>
+          <span>
+            {language === "PL" ? (
+              <>Grasz jako <span className="font-bold text-white">{ourChampion}</span> na linii <span className="font-bold text-white">{roleOptions.find(o => o.value === selectedRole)?.label || selectedRole}</span> przeciwko <span className="font-bold text-[#ff4444]">{selectedOpponent}</span>.</>
+            ) : (
+              <>Playing as <span className="font-bold text-white">{ourChampion}</span> on <span className="font-bold text-white">{roleOptions.find(o => o.value === selectedRole)?.label || selectedRole}</span> against <span className="font-bold text-[#ff4444]">{selectedOpponent}</span>.</>
+            )}
+          </span>
         </div>
       </div>
 
@@ -992,28 +1148,33 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
           </div>
         </div>
       </div>
-      <AISummary matchData={{participants, ourChampion}} language={language} onSummaryGenerated={setPowerCurves} customApiKey={customApiKey} setCustomApiKey={setCustomApiKey} />
+      <AISummary matchData={{participants, ourChampion, selectedRole: roleOptions.find(o => o.value === selectedRole)?.label || selectedRole, selectedOpponent}} language={language} onSummaryGenerated={setPowerCurves} customApiKey={customApiKey} setCustomApiKey={setCustomApiKey} />
     </div>
   );
 }
 
 async function generateSummaryDirect(matchData: any, language: "PL" | "EN", apiKey: string) {
   const ourChampion = matchData?.ourChampion || "Cho'Gath";
+  const selectedRole = matchData?.selectedRole || "Środek (Mid)";
+  const selectedOpponent = matchData?.selectedOpponent || "Przeciwnik";
+
   const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100. Also estimate the exact or approximate base cooldown of their Ultimate (R) ability in seconds at ranks 1, 2, 3 (levels 6, 11, 16) as a string formatted like "120/100/80".
 
-You are an expert League of Legends coach. Write your analysis strictly from the perspective of the player playing ${ourChampion}, advising them on how to play their role, deal with matchups, and win.
+You are an expert League of Legends coach. Write your analysis strictly from the perspective of the player playing **${ourChampion}** on position/role **${selectedRole}**, advising them directly on how to play their role, deal with matchups (especially their direct opponent in lane: **${selectedOpponent}**), and win.
 
 Provide a comprehensive tactical analysis strictly in ${language === 'PL' ? 'Polish (Polski)' : 'English'}.
+Address the player directly using personal pronouns ("Ty", "Twój", "Twoim zadaniem jest", "Zrobiłeś", "Zwróć uwagę"). Make the tone highly professional, coaching, engaging, and direct.
+
 Your analysis must detail:
-1. EARLY GAME: Lane strategy with ${ourChampion} and overall early macro.
-2. MID GAME: Mid-game transition, objective focus, and side-lane / macro control with ${ourChampion}.
-3. LATE GAME: Late-game scaling, teamfighting, or split-pushing with ${ourChampion}.
+1. EARLY GAME: Lane strategy with ${ourChampion} against **${selectedOpponent}** in ${selectedRole} and overall early macro.
+2. MID GAME: Mid-game transition, objective focus, side-lane / macro control, and how to use your power spikes with ${ourChampion}.
+3. LATE GAME: Late-game scaling, teamfighting, positioning, or split-pushing with ${ourChampion}.
 4. TEAM COMPOSITION & TEAMFIGHTS: Deep dive into the allied and enemy team compositions, explaining why they are structured this way, what their win/loss dynamics are, and how they interact in teamfights.
 5. OPTIMAL WINNING PLAN: The absolute best, most optimal step-by-step strategy/plan to secure a win.
 
 Return your response strictly in the following JSON structure:
 {
-  "earlyGame": "Detailed tactical advice for early game in ${language === 'PL' ? 'Polish' : 'English'}...",
+  "earlyGame": "Detailed tactical advice for early game against ${selectedOpponent} in ${language === 'PL' ? 'Polish' : 'English'}...",
   "midGame": "Detailed tactical advice for mid game in ${language === 'PL' ? 'Polish' : 'English'}...",
   "lateGame": "Detailed tactical advice for late game in ${language === 'PL' ? 'Polish' : 'English'}...",
   "teamComp": "Deep analysis of the team compositions in ${language === 'PL' ? 'Polish' : 'English'}...",

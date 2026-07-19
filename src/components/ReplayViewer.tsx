@@ -55,6 +55,11 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  const playerParticipant = useMemo(() => {
+    if (!matchDetails?.info?.participants) return null;
+    return matchDetails.info.participants.find((p: any) => p.puuid === playerPuuid || p.is_player);
+  }, [matchDetails, playerPuuid]);
+
   const requestRef = useRef<number | null>(null);
   const previousTimeRef = useRef<number | null>(null);
 
@@ -363,18 +368,31 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
     setIsAnalyzing(true);
     setAiAnalysis(null);
 
-    const prompt = `Analyze these major events from a League of Legends match and provide a step-by-step critical breakdown of the mistakes made, especially focusing on deaths, lost objectives, and gold deficits. Focus purely on key turning points.
-    
-    Events:
-    ${JSON.stringify(allEvents.filter(e => e.type === 'CHAMPION_KILL' || e.type === 'ELITE_MONSTER_KILL').map(e => {
-      const timeMins = Math.floor(e.timestamp / 60000);
-      if (e.type === 'CHAMPION_KILL') {
-        return `${timeMins} min: Kill by ${participantsInfo[e.killerId]?.championName} on ${participantsInfo[e.victimId]?.championName}`;
-      } else {
-        return `${timeMins} min: ${e.monsterType} secured by Team ${e.killerTeamId === 100 ? 'Blue' : 'Red'}`;
-      }
-    }))}
-    `;
+    const playerChamp = playerParticipant?.championName || "Cho'Gath";
+    const playerPos = playerParticipant?.teamPosition || playerParticipant?.role || "MID";
+
+    const prompt = `Jesteś eksperckim trenerem (coachem) gry League of Legends. Przeanalizuj poniższe kluczowe wydarzenia z meczu i przedstaw graczowi grającemu jako **${playerChamp}** na pozycji/roli **${playerPos}** profesjonalną, taktyczną, krytyczną analizę błędów i wskazówek coachingowych.
+
+Zasady analizy:
+1. Pisz wyłącznie w języku polskim.
+2. Zwracaj się bezpośrednio do gracza (używaj form "Ty", "Twój", "Twoje", "Zrobiłeś", "Zwróć uwagę").
+3. Zachowaj ton profesjonalnego trenera (surowego, ale pomocnego i merytorycznego).
+4. Sformatuj odpowiedź za pomocą czytelnych punktów (bullet points) z pogrubieniami (Markdown). Przedstaw logiczny i ustrukturyzowany podział:
+   - **Główny Przełom/Zwrot Akcji (Turning Points)**: krótkie podsumowanie kluczowych momentów, w których gra została wygrana lub przegrana.
+   - **Krytyczne Błędy i Lekcje**: bezpośrednie wskazówki co gracz (jako ${playerChamp}) mógł zrobić lepiej przy poszczególnych eliminacjach i walkach o cele (Dragon, Baron).
+   - **Strategiczny Plan Działania**: lista kroków na przyszłość, aby poprawić grę na tej linii/roli.
+
+Wydarzenia z gry:
+${JSON.stringify(allEvents.filter(e => e.type === 'CHAMPION_KILL' || e.type === 'ELITE_MONSTER_KILL').map(e => {
+  const timeMins = Math.floor(e.timestamp / 60000);
+  if (e.type === 'CHAMPION_KILL') {
+    const killerName = participantsInfo[e.killerId]?.championName || `Gracz ${e.killerId}`;
+    const victimName = participantsInfo[e.victimId]?.championName || `Gracz ${e.victimId}`;
+    return `${timeMins} min: Zabójstwo - ${killerName} zabila ${victimName}`;
+  } else {
+    return `${timeMins} min: ${e.monsterType} zabezpieczony przez Team ${e.killerTeamId === 100 ? 'Niebieskich' : 'Czerwonych'}`;
+  }
+}))}`;
 
     try {
       const response = await fetch('/api/gemini', {

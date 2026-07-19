@@ -143,6 +143,7 @@ export default function App() {
         champion: p.championName,
         team: p.teamId === 100 ? ("Blue" as const) : ("Red" as const),
         is_player: isPlayer,
+        position: p.teamPosition || p.lane || "",
         runy: {
           glowne: primaryRune,
           sciezka: "Primary"
