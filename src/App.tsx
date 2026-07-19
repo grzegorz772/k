@@ -379,7 +379,14 @@ MECZ DATA:
             </div>
           ) : activeTab === "replay" && rawMatchDetails && rawMatchTimeline ? (
             <div className="flex-1 bg-[#0b0c10] border border-[#1f2833] rounded-lg overflow-hidden relative">
-              <ReplayViewer matchDetails={rawMatchDetails} matchTimeline={rawMatchTimeline} dDragon={rawDDragon} playerPuuid={currentAccount?.puuid} geminiApiKey={geminiApiKey} />
+              <ReplayViewer 
+                matchDetails={rawMatchDetails} 
+                matchTimeline={rawMatchTimeline} 
+                dDragon={rawDDragon} 
+                playerPuuid={currentAccount?.puuid} 
+                geminiApiKey={geminiApiKey} 
+                setGeminiApiKey={setGeminiApiKey}
+              />
             </div>
           ) : (
             <div className="flex-1 bg-[#0b0c10] border border-[#1f2833] rounded-lg flex flex-col overflow-hidden relative">

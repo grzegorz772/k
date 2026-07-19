@@ -14,7 +14,7 @@ const TOWER_POSITIONS = [
   {id: 'r_b_1', x: 13866, y: 4505, team: 200}, {id: 'r_b_2', x: 13327, y: 8226, team: 200}, {id: 'r_b_3', x: 13624, y: 10572, team: 200}
 ];
 
-export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, playerPuuid, geminiApiKey }: any) {
+export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, playerPuuid, geminiApiKey: propGeminiApiKey, setGeminiApiKey: propSetGeminiApiKey }: any) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameTimeMs, setGameTimeMs] = useState(0);
   const [speed, setSpeed] = useState(1);
@@ -23,6 +23,26 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
   const [blueExpanded, setBlueExpanded] = useState(true);
   const [redExpanded, setRedExpanded] = useState(true);
   const mapRef = useRef<HTMLDivElement>(null);
+
+  const [localGeminiApiKey, setLocalGeminiApiKey] = useState<string>(() => {
+    try {
+      const stored = localStorage.getItem("gemini_api_key");
+      if (stored) return stored;
+    } catch (e) {}
+    return "";
+  });
+
+  const geminiApiKey = propGeminiApiKey !== undefined ? propGeminiApiKey : localGeminiApiKey;
+  const setGeminiApiKey = propSetGeminiApiKey !== undefined ? propSetGeminiApiKey : setLocalGeminiApiKey;
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("gemini_api_key", geminiApiKey);
+    } catch (e) {}
+  }, [geminiApiKey]);
+
+  const [visiblePopups, setVisiblePopups] = useState<any[]>([]);
+  const lastProcessedTimeRef = useRef<number>(0);
 
   const [headStat, setHeadStat] = useState<'none' | 'gold' | 'kda' | 'level' | 'hp'>('gold');
   const [chartConfig, setChartConfig] = useState({
@@ -259,17 +279,41 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
     });
   }, [participantsInfo]);
 
-  const recentPopups = useMemo(() => {
-    const timeWindow = 4000 * speed;
-    const popups: any[] = [];
-    allKills.filter(k => gameTimeMs >= k.timestamp && gameTimeMs <= k.timestamp + timeWindow).forEach(k => {
-        popups.push({...k, popupType: 'KILL'});
-    });
-    allObjectives.filter(o => gameTimeMs >= o.timestamp && gameTimeMs <= o.timestamp + timeWindow).forEach(o => {
-        popups.push({...o, popupType: 'OBJECTIVE'});
-    });
-    return popups.sort((a, b) => b.timestamp - a.timestamp).slice(0, 3);
-  }, [allKills, allObjectives, gameTimeMs, speed]);
+  useEffect(() => {
+    const diff = gameTimeMs - lastProcessedTimeRef.current;
+    if (Math.abs(diff) > 5000) {
+      lastProcessedTimeRef.current = gameTimeMs;
+      return;
+    }
+
+    if (diff > 0) {
+      const newEvents: any[] = [];
+      allKills.forEach(k => {
+        if (k.timestamp > lastProcessedTimeRef.current && k.timestamp <= gameTimeMs) {
+          newEvents.push({ ...k, id: `kill-${k.timestamp}-${Math.random()}`, popupType: 'KILL' });
+        }
+      });
+      allObjectives.forEach(o => {
+        if (o.timestamp > lastProcessedTimeRef.current && o.timestamp <= gameTimeMs) {
+          newEvents.push({ ...o, id: `obj-${o.timestamp}-${Math.random()}`, popupType: 'OBJECTIVE' });
+        }
+      });
+
+      if (newEvents.length > 0) {
+        setVisiblePopups(prev => {
+          const updated = [...prev, ...newEvents].slice(-3);
+          return updated;
+        });
+
+        newEvents.forEach(evt => {
+          setTimeout(() => {
+            setVisiblePopups(prev => prev.filter(p => p.id !== evt.id));
+          }, 2000); // exactly 2 seconds of real-time
+        });
+      }
+    }
+    lastProcessedTimeRef.current = gameTimeMs;
+  }, [gameTimeMs, allKills, allObjectives]);
 
   const getMapPosition = (p: {x: number, y: number}) => {
     const MAX_COORD = 14820;
@@ -319,33 +363,67 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
     setIsAnalyzing(true);
     setAiAnalysis(null);
 
+    const prompt = `Analyze these major events from a League of Legends match and provide a step-by-step critical breakdown of the mistakes made, especially focusing on deaths, lost objectives, and gold deficits. Focus purely on key turning points.
+    
+    Events:
+    ${JSON.stringify(allEvents.filter(e => e.type === 'CHAMPION_KILL' || e.type === 'ELITE_MONSTER_KILL').map(e => {
+      const timeMins = Math.floor(e.timestamp / 60000);
+      if (e.type === 'CHAMPION_KILL') {
+        return `${timeMins} min: Kill by ${participantsInfo[e.killerId]?.championName} on ${participantsInfo[e.victimId]?.championName}`;
+      } else {
+        return `${timeMins} min: ${e.monsterType} secured by Team ${e.killerTeamId === 100 ? 'Blue' : 'Red'}`;
+      }
+    }))}
+    `;
+
     try {
       const response = await fetch('/api/gemini', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: `Analyze these major events from a League of Legends match and provide a step-by-step critical breakdown of the mistakes made, especially focusing on deaths, lost objectives, and gold deficits. Focus purely on key turning points.
-          
-          Events:
-          ${JSON.stringify(allEvents.filter(e => e.type === 'CHAMPION_KILL' || e.type === 'ELITE_MONSTER_KILL').map(e => {
-            const timeMins = Math.floor(e.timestamp / 60000);
-            if (e.type === 'CHAMPION_KILL') {
-              return `${timeMins} min: Kill by ${participantsInfo[e.killerId]?.championName} on ${participantsInfo[e.victimId]?.championName}`;
-            } else {
-              return `${timeMins} min: ${e.monsterType} secured by Team ${e.killerTeamId === 100 ? 'Blue' : 'Red'}`;
-            }
-          }))}
-          `,
+          prompt,
           customApiKey: geminiApiKey
         })
       });
 
-      if (!response.ok) throw new Error("Failed to get AI analysis");
+      if (response.status === 404 || response.status === 405) {
+        if (geminiApiKey && geminiApiKey.trim() !== "") {
+          console.warn("Proxy endpoint not found. Falling back to direct browser call to Gemini...");
+          const directResult = await generateAnalysisDirect(prompt, geminiApiKey);
+          setAiAnalysis(directResult);
+          return;
+        } else {
+          throw new Error("Brak serwera (np. GitHub Pages). Wprowadź swój własny klucz API Gemini po prawej stronie, aby wygenerować analizę bezpośrednio!");
+        }
+      }
+
+      if (!response.ok) {
+        const errText = await response.text();
+        let message = "Failed to get AI analysis";
+        try {
+          const errJson = JSON.parse(errText);
+          message = errJson.error?.message || message;
+        } catch (e) {}
+        throw new Error(message);
+      }
+      
       const data = await response.json();
       setAiAnalysis(data.result);
     } catch (err: any) {
       console.error(err);
-      setAiAnalysis("Error generating analysis. Please ensure Gemini API key is configured.");
+      if (geminiApiKey && geminiApiKey.trim() !== "") {
+        try {
+          console.warn("Proxy request failed. Attempting direct browser call to Gemini as fallback...");
+          const directResult = await generateAnalysisDirect(prompt, geminiApiKey);
+          setAiAnalysis(directResult);
+          return;
+        } catch (directError: any) {
+          console.error("Direct browser call also failed:", directError);
+          setAiAnalysis(`Błąd: ${directError.message || directError}`);
+        }
+      } else {
+        setAiAnalysis(`Error: ${err.message || err}. Proszę wprowadzić klucz API Gemini po prawej stronie, aby wykonać analizę bezpośrednio w przeglącarce.`);
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -387,12 +465,12 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
             <div ref={mapRef} className="aspect-square w-full max-h-[60vh] max-w-[500px] bg-[#1f2833] border border-[#2f3843] rounded-xl relative overflow-hidden shadow-2xl mx-auto">
                 <img src={`https://ddragon.leagueoflegends.com/cdn/${dDragon.latest}/img/map/map11.png`} className="absolute inset-0 w-full h-full opacity-60 flex-shrink-0 pointer-events-none object-cover mix-blend-screen" />
                 
-                {recentPopups.map((popup, idx) => {
+                 {visiblePopups.map((popup) => {
                     if (popup.popupType === 'KILL' && popup.position) {
                         const pos = getMapPosition(popup.position);
                         return (
                             <motion.div 
-                                key={`map-kill-${popup.timestamp}-${popup.victimId}`}
+                                key={`map-kill-${popup.id}`}
                                 initial={{ opacity: 1, scale: 0 }}
                                 animate={{ opacity: 0, scale: 3 }}
                                 transition={{ duration: 1.5, ease: "easeOut" }}
@@ -426,16 +504,16 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                     return null;
                 })}
 
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-50 pointer-events-none items-center">
+                 <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col gap-2 z-50 pointer-events-none items-center">
                     <AnimatePresence>
-                        {recentPopups.map((popup, idx) => {
+                        {visiblePopups.map((popup) => {
                             if (popup.popupType === 'KILL') {
                                 const killer = participantsInfo[popup.killerId];
                                 const victim = participantsInfo[popup.victimId];
                                 if (!killer || !victim) return null;
                                 return (
                                     <motion.div 
-                                      key={`kill-${popup.timestamp}-${idx}`}
+                                      key={popup.id}
                                       initial={{ y: -20, opacity: 0, scale: 0.8 }}
                                       animate={{ y: 0, opacity: 1, scale: 1 }}
                                       exit={{ y: -10, opacity: 0, scale: 0.9 }}
@@ -449,7 +527,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                             } else {
                                 return (
                                     <motion.div 
-                                      key={`obj-${popup.timestamp}-${idx}`}
+                                      key={popup.id}
                                       initial={{ y: -20, opacity: 0, scale: 0.8 }}
                                       animate={{ y: 0, opacity: 1, scale: 1 }}
                                       exit={{ y: -10, opacity: 0, scale: 0.9 }}
@@ -645,7 +723,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                 </div>
             </div>
 
-            <div className="bg-[#111] border border-[#1f2833] rounded-xl p-4 min-h-[300px] flex-1 flex flex-col relative">
+            <div className="bg-[#111] border border-[#1f2833] rounded-xl p-4 h-[350px] w-full relative">
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={chartData} onClick={(data) => {
                         if (data && data.activeLabel != null) {
@@ -687,17 +765,26 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
 
       {/* AI Analysis Container */}
       <div className="bg-[#111] border border-[#1f2833] rounded-xl p-4 md:p-6 mt-4 relative overflow-hidden flex flex-col gap-4 shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className="text-lg font-bold text-[#66fcf1] uppercase tracking-wider flex items-center gap-2">
                 <Brain className="w-5 h-5"/> Event-by-Event Analysis
               </h3>
-              <button 
-                  onClick={handleAnalyzeEvents}
-                  disabled={isAnalyzing}
-                  className="bg-[#1f2833] hover:bg-[#45a29e] text-white px-4 py-2 rounded font-bold text-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                  {isAnalyzing ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</> : "Generate Analysis"}
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                  <input 
+                      type="password"
+                      placeholder="Klucz API Gemini"
+                      value={geminiApiKey}
+                      onChange={(e) => setGeminiApiKey(e.target.value)}
+                      className="bg-[#0b0c10] border border-[#1f2833] text-xs text-white p-2 rounded focus:border-[#66fcf1] outline-none w-44"
+                  />
+                  <button 
+                      onClick={handleAnalyzeEvents}
+                      disabled={isAnalyzing}
+                      className="bg-[#1f2833] hover:bg-[#45a29e] text-white px-4 py-2 rounded font-bold text-sm transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                      {isAnalyzing ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</> : "Generate Analysis"}
+                  </button>
+              </div>
           </div>
           
           <div className="text-sm text-gray-300">
@@ -721,4 +808,42 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
       </div>
     </div>
   );
+}
+
+async function generateAnalysisDirect(prompt: string, apiKey: string) {
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+  const response = await fetch(apiUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: prompt
+            }
+          ]
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let message = "Gemini API request failed";
+    try {
+      const errJson = JSON.parse(errText);
+      message = errJson.error?.message || message;
+    } catch (e) {}
+    throw new Error(message);
+  }
+
+  const resJson = await response.json();
+  const text = resJson.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) {
+    throw new Error("No text response received from Gemini");
+  }
+  return text;
 }

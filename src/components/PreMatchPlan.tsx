@@ -627,7 +627,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
               </span>
             </div>
           </div>
-          <div className="flex-1 min-h-[140px] w-full">
+          <div className="h-[200px] w-full relative mt-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={teamPowerProgression} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                 <defs>
@@ -677,7 +677,7 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
             </div>
           </div>
           
-          <div className="flex-1 min-h-[180px] w-full">
+          <div className="h-[250px] w-full relative mt-2">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={individualPowerProgression} margin={{ top: 10, right: 15, left: -25, bottom: 0 }}>
                 <XAxis dataKey="phase" stroke="#45a29e" fontSize={10} tickLine={false} />
