@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Check, Copy, Download, Loader2, Search, Swords, Code } from "lucide-react";
 import { fetchAccount, fetchMatchIds, fetchMatchDetails, fetchMatchTimeline, fetchDDragonData, fetchCurrentMatch, fetchRunesData } from "./lib/riot-api";
 import { processMatchForAI, processLiveMatchForAI } from "./lib/timeline-processor";
@@ -7,9 +7,16 @@ import PreMatchPlan from "./components/PreMatchPlan";
 
 export default function App() {
   const [apiKey, setApiKey] = useState("");
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    return localStorage.getItem("gemini_api_key") || "";
+  });
   const [gameName, setGameName] = useState("Aethos");
   const [tagLine, setTagLine] = useState("ghfhg");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem("gemini_api_key", geminiApiKey);
+  }, [geminiApiKey]);
   const [error, setError] = useState<string | null>(null);
 
   const [matches, setMatches] = useState<string[]>([]);
@@ -264,6 +271,16 @@ MECZ DATA:
                   className="w-full bg-[#0b0c10] border border-[#1f2833] text-[11px] p-2 rounded focus:border-[#66fcf1] outline-none" 
                 />
               </div>
+              <div>
+                <label className="block text-[9px] text-[#45a29e] mb-1 uppercase">Gemini API Key (Zapisywany)</label>
+                <input 
+                  type="password" 
+                  value={geminiApiKey}
+                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                  placeholder="AIzaSy..." 
+                  className="w-full bg-[#0b0c10] border border-[#1f2833] text-[11px] p-2 rounded focus:border-[#66fcf1] outline-none" 
+                />
+              </div>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="block text-[9px] text-[#45a29e] mb-1 uppercase">Summoner Name</label>
@@ -362,7 +379,7 @@ MECZ DATA:
             </div>
           ) : activeTab === "replay" && rawMatchDetails && rawMatchTimeline ? (
             <div className="flex-1 bg-[#0b0c10] border border-[#1f2833] rounded-lg overflow-hidden relative">
-              <ReplayViewer matchDetails={rawMatchDetails} matchTimeline={rawMatchTimeline} dDragon={rawDDragon} playerPuuid={currentAccount?.puuid} />
+              <ReplayViewer matchDetails={rawMatchDetails} matchTimeline={rawMatchTimeline} dDragon={rawDDragon} playerPuuid={currentAccount?.puuid} geminiApiKey={geminiApiKey} />
             </div>
           ) : (
             <div className="flex-1 bg-[#0b0c10] border border-[#1f2833] rounded-lg flex flex-col overflow-hidden relative">
@@ -427,6 +444,8 @@ MECZ DATA:
                     ourChampion={activeTab === "live" ? finalJson.nasz_bohater : (rawMatchDetails?.info?.participants?.find((p: any) => p.puuid === currentAccount?.puuid)?.championName)}
                     latestVersion={rawDDragon?.latest}
                     isLive={activeTab === "live"}
+                    customApiKey={geminiApiKey}
+                    setCustomApiKey={setGeminiApiKey}
                   />
                 ) : (
                   <pre className="text-[11px] font-mono leading-relaxed text-[#c5c6c7] whitespace-pre-wrap">

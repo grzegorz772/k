@@ -14,7 +14,7 @@ const TOWER_POSITIONS = [
   {id: 'r_b_1', x: 13866, y: 4505, team: 200}, {id: 'r_b_2', x: 13327, y: 8226, team: 200}, {id: 'r_b_3', x: 13624, y: 10572, team: 200}
 ];
 
-export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, playerPuuid }: any) {
+export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, playerPuuid, geminiApiKey }: any) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameTimeMs, setGameTimeMs] = useState(0);
   const [speed, setSpeed] = useState(1);
@@ -246,8 +246,21 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
       return stats.sort((a,b) => b.gold - a.gold);
   }, [currentFrame, participantsInfo, allKills, gameTimeMs]);
 
+  const staticParticipants = useMemo(() => {
+    return Object.values(participantsInfo).map((p: any) => {
+      return {
+        id: p.participantId,
+        champion: p.championName,
+        team: p.teamId
+      };
+    }).sort((a, b) => {
+      if (a.team !== b.team) return a.team - b.team;
+      return a.id - b.id;
+    });
+  }, [participantsInfo]);
+
   const recentPopups = useMemo(() => {
-    const timeWindow = 4000;
+    const timeWindow = 4000 * speed;
     const popups: any[] = [];
     allKills.filter(k => gameTimeMs >= k.timestamp && gameTimeMs <= k.timestamp + timeWindow).forEach(k => {
         popups.push({...k, popupType: 'KILL'});
@@ -255,8 +268,8 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
     allObjectives.filter(o => gameTimeMs >= o.timestamp && gameTimeMs <= o.timestamp + timeWindow).forEach(o => {
         popups.push({...o, popupType: 'OBJECTIVE'});
     });
-    return popups;
-  }, [allKills, allObjectives, gameTimeMs]);
+    return popups.sort((a, b) => b.timestamp - a.timestamp).slice(0, 3);
+  }, [allKills, allObjectives, gameTimeMs, speed]);
 
   const getMapPosition = (p: {x: number, y: number}) => {
     const MAX_COORD = 14820;
@@ -322,7 +335,8 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
               return `${timeMins} min: ${e.monsterType} secured by Team ${e.killerTeamId === 100 ? 'Blue' : 'Red'}`;
             }
           }))}
-          `
+          `,
+          customApiKey: geminiApiKey
         })
       });
 
@@ -387,6 +401,26 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                             >
                                 <Skull className="w-8 h-8 text-red-500 shadow-xl" />
                             </motion.div>
+                        );
+                    }
+                    return null;
+                })}
+
+                {/* Slow-fading death location markers (stays for 15 real-time seconds) */}
+                {allKills.map((k, idx) => {
+                    const duration = 15000 * speed;
+                    if (gameTimeMs >= k.timestamp && gameTimeMs <= k.timestamp + duration && k.position) {
+                        const pos = getMapPosition(k.position);
+                        const fraction = (gameTimeMs - k.timestamp) / duration;
+                        const opacity = 1 - fraction;
+                        return (
+                            <div 
+                                key={`static-death-${k.timestamp}-${idx}`}
+                                className="absolute -translate-x-1/2 translate-y-1/2 w-6 h-6 flex items-center justify-center z-30 pointer-events-none bg-red-950/90 rounded-full border border-red-500/60 shadow-[0_0_8px_rgba(239,68,68,0.7)]"
+                                style={{ left: pos.left, bottom: pos.bottom, opacity }}
+                            >
+                                <Skull className="w-3.5 h-3.5 text-red-500" />
+                            </div>
                         );
                     }
                     return null;
@@ -576,7 +610,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                         <div>
                             <div className="font-bold text-yellow-500 uppercase text-[9px] tracking-wider mb-2">Champ Gold</div>
                             <div className="flex flex-col gap-2">
-                                {participantStats.map((p) => {
+                                {staticParticipants.map((p) => {
                                     const isPlayer = playerPuuid ? participantsInfo[p.id]?.puuid === playerPuuid : false;
                                     return (
                                         <label key={`gold-${p.id}`} className="flex items-center gap-2 cursor-pointer hover:text-white overflow-hidden">
@@ -593,7 +627,7 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
                         <div>
                             <div className="font-bold text-orange-500 uppercase text-[9px] tracking-wider mb-2">Champ Damage</div>
                             <div className="flex flex-col gap-2">
-                                {participantStats.map((p) => {
+                                {staticParticipants.map((p) => {
                                     const isPlayer = playerPuuid ? participantsInfo[p.id]?.puuid === playerPuuid : false;
                                     return (
                                         <label key={`dmg-${p.id}`} className="flex items-center gap-2 cursor-pointer hover:text-white overflow-hidden">

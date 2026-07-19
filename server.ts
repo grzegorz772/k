@@ -100,11 +100,11 @@ Data: ${JSON.stringify(matchData)}`;
 
   
   app.post("/api/gemini", async (req, res) => {
-    const { prompt } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
+    const { prompt, customApiKey } = req.body;
+    const apiKey = (customApiKey && customApiKey.trim() !== "") ? customApiKey : process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-        res.status(400).json({ error: "Missing API Key" });
+        res.status(400).json({ error: "Missing API Key", message: "No Gemini API key provided. Please set GEMINI_API_KEY environment variable or provide a custom key." });
         return;
     }
 

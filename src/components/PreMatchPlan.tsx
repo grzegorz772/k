@@ -20,6 +20,8 @@ interface PreMatchPlanProps {
   ourChampion?: string;
   latestVersion?: string;
   isLive?: boolean;
+  customApiKey?: string;
+  setCustomApiKey?: (key: string) => void;
 }
 
 export interface ChampionPowerCurve {
@@ -299,10 +301,11 @@ export function getChampionRCooldown(champName: string, curveRCooldown?: string)
   return DEFAULT_R_COOLDOWNS[key] || "120/100/80";
 }
 
-export default function PreMatchPlan({ participants, ourChampion, latestVersion = "14.22.1", isLive = false }: PreMatchPlanProps) {
+export default function PreMatchPlan({ participants, ourChampion, latestVersion = "14.22.1", isLive = false, customApiKey: propCustomApiKey, setCustomApiKey: propSetCustomApiKey }: PreMatchPlanProps) {
   const [language, setLanguage] = useState<"PL" | "EN">("PL");
   const [powerCurves, setPowerCurves] = useState<any>(null);
-  const [customApiKey, setCustomApiKey] = useState<string>(() => {
+  
+  const [localCustomApiKey, setLocalCustomApiKey] = useState<string>(() => {
     try {
       const stored = localStorage.getItem("gemini_api_key");
       if (stored) return stored;
@@ -317,6 +320,9 @@ export default function PreMatchPlan({ participants, ourChampion, latestVersion 
     } catch (e) {}
     return "";
   });
+
+  const customApiKey = propCustomApiKey !== undefined ? propCustomApiKey : localCustomApiKey;
+  const setCustomApiKey = propSetCustomApiKey !== undefined ? propSetCustomApiKey : setLocalCustomApiKey;
 
   useEffect(() => {
     try {
