@@ -43,17 +43,17 @@ async function startServer() {
 
         const prompt = `Analyze this League of Legends match data and evaluate the power curve of each champion in early, mid, and late game phases on a scale of 0 to 100. Also estimate the exact or approximate base cooldown of their Ultimate (R) ability in seconds at ranks 1, 2, 3 (levels 6, 11, 16) as a string formatted like "120/100/80".
 
-You are an expert League of Legends coach. Write your analysis strictly from the perspective of the player playing **${ourChampion}** on position/role **${selectedRole}**, advising them directly on how to play their role, deal with matchups (especially their direct opponent in lane: **${selectedOpponent}**), and win.
+Jesteś elitarnym analitykiem i trenerem League of Legends. Przygotowujesz gracza grającego jako **${ourChampion}** na pozycji/roli **${selectedRole}** do nadchodzącego meczu przeciwko **${selectedOpponent}**.
 
 Provide a comprehensive tactical analysis strictly in ${language === 'PL' ? 'Polish (Polski)' : 'English'}.
-Address the player directly using personal pronouns ("Ty", "Twój", "Twoim zadaniem jest", "Zrobiłeś", "Zwróć uwagę"). Make the tone highly professional, coaching, engaging, and direct.
+Address the player directly using personal pronouns ("Ty", "Twój", "Twoim zadaniem", "Musisz"). Make the tone highly professional, objective, coaching, engaging, and direct. Base your analysis on the "Best Case vs Worst Case scenario" methodology and temporal windows (okienka czasowe).
 
 Your analysis must detail:
-1. EARLY GAME: Lane strategy with ${ourChampion} against **${selectedOpponent}** in ${selectedRole} and overall early macro.
-2. MID GAME: Mid-game transition, objective focus, side-lane / macro control, and how to use your power spikes with ${ourChampion}.
-3. LATE GAME: Late-game scaling, teamfighting, positioning, or split-pushing with ${ourChampion}.
-4. TEAM COMPOSITION & TEAMFIGHTS: Deep dive into the allied and enemy team compositions, explaining why they are structured this way, what their win/loss dynamics are, and how they interact in teamfights.
-5. OPTIMAL WINNING PLAN: The absolute best, most optimal step-by-step strategy/plan to secure a win.
+1. EARLY GAME (Analiza Linii i Okienek Czasowych): Lane strategy with ${ourChampion} against **${selectedOpponent}** in ${selectedRole}. Kiedy masz "okienka" na trade/push/roam? Jak zarządzać falami i timingiem powrotów (recall) na tej linii?
+2. MID GAME (Tempo i Obiektywy): Mid-game transition, objective focus. Jak planować wyjścia z bazy na 30-60s przed obiektywem? Jak unikać "pustych przebiegów" w zdobywaniu zasobów (Gold/XP)?
+3. LATE GAME (Najlepszy vs Najgorszy Scenariusz): Zdefiniuj jasno: Co jest Twoim "Najlepszym Scenariuszem" w walkach (Idealna realizacja roli z uwzględnieniem umiejętności przeciwników)? Co jest "Najgorszym Scenariuszem" i jak go uniknąć?
+4. TEAM COMPOSITION & TEAMFIGHTS: Deep dive into the allied and enemy team compositions. Jak Wasz team współdziała z Twoim Najlepszym Scenariuszem? Kto ze strony wroga jest największym zagrożeniem?
+5. OPTIMAL WINNING PLAN: Syntetyczne podsumowanie w formie checklisty - 3 najważniejsze zadania makro/mikro do zrealizowania, aby wygrać ten mecz.
 
 Return your response strictly in the following JSON structure:
 {

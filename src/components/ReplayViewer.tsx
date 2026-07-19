@@ -371,16 +371,32 @@ export default function ReplayViewer({ matchDetails, matchTimeline, dDragon, pla
     const playerChamp = playerParticipant?.championName || "Cho'Gath";
     const playerPos = playerParticipant?.teamPosition || playerParticipant?.role || "MID";
 
-    const prompt = `Jesteś eksperckim trenerem (coachem) gry League of Legends. Przeanalizuj poniższe kluczowe wydarzenia z meczu i przedstaw graczowi grającemu jako **${playerChamp}** na pozycji/roli **${playerPos}** profesjonalną, taktyczną, krytyczną analizę błędów i wskazówek coachingowych.
+    const prompt = `Jesteś elitarnym analitykiem i trenerem League of Legends. Analizujesz powtórkę meczu (Replay) dla gracza grającego jako **${playerChamp}** na pozycji/roli **${playerPos}**.
 
-Zasady analizy:
+Oprzyj swoją analizę kategorycznie na "10 Filarach Skutecznej Powtórki":
+1. Analiza śmierci: Diagnozuj zgony. Dobra śmierć (zysk dla drużyny) vs Zła śmierć (błąd pozycjonowania, stracony Flash, brak wizji).
+2. Okienka czasowe: Czy po crashu fali gracz robił coś użytecznego (Tower DMG, Harass, Deep Vision, Recall, Roam)?
+3. Timing powrotów (Recall): Błędy tempa. Za wcześnie (oddanie mapy) vs za późno (overstay z dużą ilością złota).
+4. Wyjście z bazy: Gdzie gracz biegł po recallu? Planowanie na 30s do przodu.
+5. Niecontestowane fale: Czy pchano fale przed walką o obiektywy?
+6. Przygotowanie pod obiektywy: Czy na 1-2 min przed smokiem/Baronem był reset, kontrola wizji, gotowe ultimate'y?
+7. Gospodarka zasobami: Przestoje i "puste przebiegi" (jałowe bieganie po mapie bez farmy/XP).
+8. Użycie Summoner Spells: Czy Flash był użyty do kreowania przewagi, czy ratowania z błędu?
+9. Zarządzanie przewagą: Oddawanie shutdownów i overstay po wygranym teamfighcie.
+10. Najlepszy vs Najgorszy scenariusz: Pre-kalkulacja wyników walki.
+
+Zasady komunikacji:
 1. Pisz wyłącznie w języku polskim.
-2. Zwracaj się bezpośrednio do gracza (używaj form "Ty", "Twój", "Twoje", "Zrobiłeś", "Zwróć uwagę").
-3. Zachowaj ton profesjonalnego trenera (surowego, ale pomocnego i merytorycznego).
-4. Sformatuj odpowiedź za pomocą czytelnych punktów (bullet points) z pogrubieniami (Markdown). Przedstaw logiczny i ustrukturyzowany podział:
-   - **Główny Przełom/Zwrot Akcji (Turning Points)**: krótkie podsumowanie kluczowych momentów, w których gra została wygrana lub przegrana.
-   - **Krytyczne Błędy i Lekcje**: bezpośrednie wskazówki co gracz (jako ${playerChamp}) mógł zrobić lepiej przy poszczególnych eliminacjach i walkach o cele (Dragon, Baron).
-   - **Strategiczny Plan Działania**: lista kroków na przyszłość, aby poprawić grę na tej linii/roli.
+2. Zwracaj się BEZPOŚREDNIO do gracza ("Ty", "Twój", "Zrobiłeś", "Spóźniłeś się"). Bądź surowy, obiektywny i konkretny - jak prawdziwy coach.
+3. Systematyzuj błędy - pokaż związek przyczynowo-skutkowy (np. "Twoja śmierć w X minucie wynikała ze złego recallu").
+4. Używaj czytelnego formatowania Markdown (pogrubienia, wypunktowania).
+
+Sformatuj odpowiedź w następujący sposób:
+- **1. Syntetyczne Podsumowanie i Kluczowe Wnioski**: Obiektywna diagnoza Twojego wpływu na mecz.
+- **2. Analiza Zgonów i Tempa**: Odnieś się do konkretnych śmierci z listy. Wskaż "złe śmierci" i zmarnowane okienka czasowe.
+- **3. Zarządzanie Obiektywami**: Analiza utraconych/zdobytych smoków i Baronów pod kątem Twojego przygotowania do nich (wizja, wyjścia z bazy).
+- **4. Najlepszy vs Najgorszy Scenariusz**: Zdefiniuj, co było Twoim "Najlepszym Scenariuszem" w tym meczu (kogo miałeś zabić/jak się ustawić), a co "Najgorszym" (na jakie CC dałeś się złapać).
+- **5. Zadanie Domowe (Quick Review)**: 3 konkretne punkty do poprawy w Twoim makro/mikro.
 
 Wydarzenia z gry:
 ${JSON.stringify(allEvents.filter(e => e.type === 'CHAMPION_KILL' || e.type === 'ELITE_MONSTER_KILL').map(e => {
@@ -388,7 +404,7 @@ ${JSON.stringify(allEvents.filter(e => e.type === 'CHAMPION_KILL' || e.type === 
   if (e.type === 'CHAMPION_KILL') {
     const killerName = participantsInfo[e.killerId]?.championName || `Gracz ${e.killerId}`;
     const victimName = participantsInfo[e.victimId]?.championName || `Gracz ${e.victimId}`;
-    return `${timeMins} min: Zabójstwo - ${killerName} zabila ${victimName}`;
+    return `${timeMins} min: Zabójstwo - ${killerName} zabił(a) ${victimName}`;
   } else {
     return `${timeMins} min: ${e.monsterType} zabezpieczony przez Team ${e.killerTeamId === 100 ? 'Niebieskich' : 'Czerwonych'}`;
   }
